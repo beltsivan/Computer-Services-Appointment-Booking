@@ -1,16 +1,8 @@
-
-
+import { Header } from "./components/Header"
 function App() {
-  const greeting = 'Hello world!'
+  
   return (
-    <div className="App">
-      <h1 className="sample">
-        waw
-       {greeting}
-      </h1>
-    </div>
-    
+      <Header />
   )
 }
-
 export default App
