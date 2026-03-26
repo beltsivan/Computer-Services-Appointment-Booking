@@ -51,7 +51,7 @@ export const Footer = () => {
               © {new Date().getFullYear()} Computer Retail Store Services
             </p>
             <p className="text-muted-foreground/70 text-xs mt-1">
-              Mandaue City, Cebu
+              Address
             </p>
           </div>
           <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border z-40">
