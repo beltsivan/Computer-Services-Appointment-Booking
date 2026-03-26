@@ -9,7 +9,7 @@ export const Footer = () => {
          
           <div className="">
             <h3 className="text-xl font-bold text-gradient mb-2">
-              Name sa Store
+              Name sa COmputer Store Services
             </h3>
             <p className="text-muted-foreground text-sm">
               Computer Services
@@ -41,7 +41,7 @@ export const Footer = () => {
               className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
             >
               <MapPin className="w-4 h-4" />
-              <span>Directions</span>
+              <span>Nice Directions</span>
             </a>
           </div>
 
@@ -51,7 +51,7 @@ export const Footer = () => {
               © {new Date().getFullYear()} Computer Retail Store Services
             </p>
             <p className="text-muted-foreground/70 text-xs mt-1">
-              Address to be fill in
+              Address to be fill in later
             </p>
           </div>
           <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border z-40">
