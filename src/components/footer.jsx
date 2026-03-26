@@ -9,7 +9,7 @@ export const Footer = () => {
          
           <div className="">
             <h3 className="text-xl font-bold text-gradient mb-2">
-              Name sa COmputer Store
+              Name sa COmputer Store Services
             </h3>
             <p className="text-muted-foreground text-sm">
               Computer Services
