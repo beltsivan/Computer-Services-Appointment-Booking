@@ -9,7 +9,7 @@ export const Footer = () => {
          
           <div className="">
             <h3 className="text-xl font-bold text-gradient mb-2">
-              Name sa Store
+              Name sa COmputer Store
             </h3>
             <p className="text-muted-foreground text-sm">
               Computer Services
@@ -51,7 +51,7 @@ export const Footer = () => {
               © {new Date().getFullYear()} Computer Retail Store Services
             </p>
             <p className="text-muted-foreground/70 text-xs mt-1">
-              Address
+              Address to be fill in
             </p>
           </div>
           <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border z-40">
