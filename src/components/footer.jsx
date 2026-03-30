@@ -3,15 +3,16 @@ import { FaFacebook } from "react-icons/fa";
 
 export const Footer = () => {
     return(
-        <footer className="bg-gradient-to-br from-orange-50 border-t border-border">
+        <>
+        <footer className="bg-gray-900 border-t border-orange-500">
             <div className="container px-4 py-12 mx-auto">
         <div className="grid md:grid-cols-3 gap-8 items-center">
          
           <div className="">
-            <h3 className="text-xl font-bold text-gradient mb-2">
+            <h3 className="text-xl font-bold text-orange-400 mb-2">
               Name sa COmputer Store Services
             </h3>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-gray-300 text-sm">
               Computer Services
             </p>
           </div>
@@ -20,7 +21,7 @@ export const Footer = () => {
           <div className="flex flex-wrap justify-center gap-6">
             <a
               href="tel:09688512104"
-              className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-2 text-gray-300 hover:text-orange-400 transition-colors"
             >
               <Phone className="w-4 h-4" />
               <span>0968 851 2104</span>
@@ -29,7 +30,7 @@ export const Footer = () => {
               href="https://www.facebook.com/BeltTechnologyAutoCarAirconServices"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-2 text-gray-300 hover:text-orange-400 transition-colors"
             >
               <FaFacebook className="w-4 h-4" />
               <span>Facebook</span>
@@ -38,7 +39,7 @@ export const Footer = () => {
               href=""
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-2 text-gray-300 hover:text-orange-400 transition-colors"
             >
               <MapPin className="w-4 h-4" />
               <span>Nice Directions</span>
@@ -47,26 +48,30 @@ export const Footer = () => {
 
           {/* Copyright */}
           <div className="text-center md:text-right">
-            <p className="text-muted-foreground text-sm">
+            <p className="text-gray-300 text-sm">
               © {new Date().getFullYear()} Computer Retail Store Services
             </p>
-            <p className="text-muted-foreground/70 text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-1">
               Address to be fill in later
             </p>
           </div>
-          <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border z-40">
-        <a
-          href="tel:09688512104"
-          className="flex items-center justify-center gap-2 w-full h-14 bg-primary text-primary-foreground font-bold rounded-xl shadow-lg glow-orange animate-pulse-glow"
-        >
-          <Phone className="w-5 h-5" />
-          Call Now - 0968 851 2104
-        </a>
-      </div>
         </div>
       </div>
-
-      
         </footer>
+        
+        {/* Mobile Call Button */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gray-900 backdrop-blur-md border-t border-orange-500 z-40">
+          <a
+            href="tel:09688512104"
+            className="flex items-center justify-center gap-2 w-full h-14 bg-orange-600 text-white font-bold rounded-xl shadow-lg hover:bg-orange-700 transition-colors"
+          >
+            <Phone className="w-5 h-5" />
+            Call Now - 0968 851 2104
+          </a>
+        </div>
+        
+        {/* Bottom spacer for mobile fixed button */}
+        <div className="md:hidden h-24" />
+        </>
     );
 }
