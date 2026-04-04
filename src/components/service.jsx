@@ -7,7 +7,7 @@ import cleanPc from "/src/assets/cleaningPc.webp";
 import cleanLap from "/src/assets/cleaningLap.avif";
 
 
-export const About = () => {
+export const Service = () => {
   const slides = [
     { img: repPc, type: "Repairing Computer" },
     { img: repLap, type: "Repairing Laptop" },
@@ -29,14 +29,14 @@ export const About = () => {
   };
 
   return (
-    <section className="py-10 min-h-screen bg-gradient-to-br from-orange-950 via-black to-orange-950 
+    <section id="services" className="py-10 min-h-screen bg-gradient-to-br from-orange-950 via-black to-orange-950 
                 relative overflow-hidden">
       <div className="container mx-auto grid md:grid-cols-2 gap-25 items-center relative">
         <div className="absolute top-0 left-1/2 w-[400px] h-[400px] 
                   bg-orange-500 opacity-35 blur-3xl rounded-full 
                   -translate-x-1/2"></div>
         
-        <div className="relative">
+        <div className="relative py-10">
             <div className="mb-3 text-center">
                 <span className="inline-block px-4 py-1.5 text-xs md:text-xl font-semibold tracking-wide uppercase 
                                 text-white bg-gradient-to-r from-orange-300 via-orange-500 to-orange-600 

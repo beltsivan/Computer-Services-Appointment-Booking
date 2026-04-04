@@ -5,7 +5,7 @@ import bg from "/src/assets/pc.jpg";
 export const Hero = () => {
 
    return(
-    <section className="relative min-h-screen w-full overflow-hidden">
+    <section id="hero" className="relative min-h-screen w-full overflow-hidden">
       <div className="absolute inset-0">
         <img
           src={bg}

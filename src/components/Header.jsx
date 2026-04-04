@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { FiMenu, FiX, FiArrowRight } from 'react-icons/fi';
+import { useNavigate } from "react-router-dom";
 
 const navItems = [
-  { label: 'Home', link: '#' },
-  { label: 'About', link: '#about' },
-  { label: 'Services', link: '#services' },
+  { label: 'Home', link: '#hero' },
+  { label: 'Service', link: '#services' },      
+  { label: 'About', link: '#about' }, 
   { label: 'Contact', link: '#contact' },
 ];
 
+
 export const Header = () => {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -64,9 +67,15 @@ export const Header = () => {
                 onClick={() => setIsRegisterOpen(true)}
                 className="hidden md:block bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors duration-200 font-medium"
               >
-                Register
+                Sign up
               </button>
-
+              <button
+                onClick={() => navigate('/login')}
+                className="hidden md:block bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors duration-200 font-medium"
+              >
+                Sign in
+              </button>
+              
               {/* Mobile Menu Toggle */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}

@@ -1,18 +1,15 @@
-import { Header } from "./components/Header"
-import { Hero } from "./components/hero"
-import { Footer } from "./components/footer"
-import { About } from "./components/about"
-
-function App() {
+import { Routes, Route } from "react-router-dom"
+import { Home } from "./pages/Home"
+import { Login } from "./pages/Login"
+import { AdminDashboard } from "./pages/AdminDashboard"
   
+function App() {
   return (
-      <>
-        <Header />
-        <Hero />
-        <About />
-        <Footer />
-
-      </>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+    </Routes>
   )
 }
 export default App
