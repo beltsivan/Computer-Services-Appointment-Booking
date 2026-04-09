@@ -1,7 +1,7 @@
-import { Header } from "../components/Header"
-import { Hero } from "../components/hero"
-import { Service } from "../components/service"
-import { Footer } from "../components/footer"
+import { Header } from "../components/HomeSection/Header"
+import { Hero } from "../components/HomeSection/hero"
+import { Service } from "../components/HomeSection/service"
+import { Footer } from "../components/HomeSection/footer"
 
 export const Home = () => {
   return (

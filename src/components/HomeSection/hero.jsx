@@ -63,10 +63,7 @@ export const Hero = () => {
             </div>
           </div>
 
-          {/* Right Illustration */}
-          <div className="hidden md:flex justify-center">
-            <div className="w-96 h-96 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full opacity-20"></div>
-          </div>
+          
         </div>
       </div>
     </div>
