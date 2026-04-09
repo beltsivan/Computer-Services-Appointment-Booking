@@ -36,8 +36,8 @@ export const Service = () => {
                 relative overflow-visible">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-start md:items-center relative">
-          <div className="absolute top-0 left-1/2 w-[300px] md:w-[400px] h-[300px] md:h-[400px] 
-                    bg-orange-500 opacity-35 blur-3xl rounded-full 
+          <div className="absolute top-20 left-1/2 w-[400px] md:w-[400px] h-[400px] md:h-[280px] 
+                    bg-orange-700 opacity-45 blur-3xl rounded-full 
                     -translate-x-1/2 -translate-y-1/2"></div>
           
           <div className="relative py-8 md:py-10 w-full">
@@ -134,7 +134,7 @@ export const Service = () => {
                     className="flex-shrink-0 px-8 py-4  transform hover:scale-200 transition-transform duration-500
                                "
                   >
-                    <span className="font-mono text-white text-base md:text-3xl">
+                    <span className="font-mono text-white text-base md:text-3xl italic">
                       {brand}
                     </span>
                   </div>

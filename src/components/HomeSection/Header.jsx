@@ -44,7 +44,7 @@ export const Header = () => {
                 onClick={() => navigate('/Auth')}
                 className="hidden md:block bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors duration-200 font-medium"
               >
-                Be Part
+                Join Us
               </button>
               {/* Mobile Menu Toggle */}
               <button
