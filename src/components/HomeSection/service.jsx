@@ -81,7 +81,7 @@ export const Service = () => {
         {/* Text */}
         <div class=" px-4 py-6 md:py-0 bg-black-400 rounded-2xl relative z-20 ">
           <div className="max-w-lg p-5">
-            <h2 className="text-[80px] font-bold mb-4 text-white">About Us</h2>
+            <h2 className="text-[80px] font-bold mb-4 text-white">Services</h2>
           <p className="text-[20px] mb-4 text-white">
             Our system simplifies computer service booking by allowing customers to schedule repairs, 
             upgrades and maintenance online.
