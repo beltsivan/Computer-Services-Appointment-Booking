@@ -65,7 +65,7 @@ export const Hero = () => {
         </div>
       </div>
       
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+      <div className="hidden md:flex absolute bottom-12 lg:bottom-16 left-1/2 -translate-x-1/2 animate-bounce pointer-events-none">
           <div className="w-6 h-10 rounded-full border-2 border-white flex items-start justify-center p-2">
             <div className="w-1 h-2 bg-orange-400 rounded-full animate-pulse" />
           </div>
