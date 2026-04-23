@@ -3,6 +3,7 @@ import { Login } from '../components/Authentication/Login';
 import { Register } from '../components/Authentication/Register';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '../supabaseClient'
 
 export const Auth = () => {
   const navigate = useNavigate();

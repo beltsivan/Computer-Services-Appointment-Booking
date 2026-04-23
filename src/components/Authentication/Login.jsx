@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { Mail, Lock } from 'lucide-react';
+import { supabase } from '../../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 export const Login = ({ onSwitchToRegister }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -13,11 +18,38 @@ export const Login = ({ onSwitchToRegister }) => {
       ...prev,
       [name]: value
     }));
+    setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login:', formData);
+    setError('');
+    setLoading(true);
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      if (data.user) {
+        alert('Login successful!');
+        setFormData({
+          email: '',
+          password: '',
+        });
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred during login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,6 +93,13 @@ export const Login = ({ onSwitchToRegister }) => {
             </div>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
           {/* Remember Me & Forgot Password */}
           <div className="flex items-center justify-between text-sm">
             <label className="flex items-center">
@@ -75,9 +114,10 @@ export const Login = ({ onSwitchToRegister }) => {
           {/* Sign In Button */}
           <button
             type="submit"
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg transition"
+            disabled={loading}
+            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-900 text-white font-bold py-2 rounded-lg transition"
           >
-            Sign In
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
       </div>
