@@ -1,4 +1,4 @@
-import { BarChart3, Calendar, Users, Settings, LogOut, Menu, X } from 'lucide-react';
+import { BarChart3, Calendar, Users, Settings, LogOut, Menu, X, Wrench } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
@@ -19,6 +19,7 @@ export const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
       <nav className="mt-8 space-y-2 px-4">
         <NavItem icon={BarChart3} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
         <NavItem icon={Calendar} label="Appointments" active={activeTab === 'appointments'} onClick={() => setActiveTab('appointments')} />
+        
         <NavItem icon={Users} label="Clients" active={activeTab === 'clients'} onClick={() => setActiveTab('clients')} />
         <NavItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
       </nav>
