@@ -38,12 +38,37 @@ export const Login = ({ onSwitchToRegister }) => {
       }
 
       if (data.user) {
+        // Fetch user role from database
+        const { data: userData, error: fetchError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id);
+
+        if (fetchError) {
+          console.error('Error fetching user role:', fetchError);
+          setError(`Failed to fetch user role: ${fetchError.message}`);
+          return;
+        }
+
+        // Check if user record exists
+        if (!userData || userData.length === 0) {
+          console.error('User record not found in database for ID:', data.user.id);
+          setError('User record not found. Please contact administrator.');
+          return;
+        }
+
         alert('Login successful!');
         setFormData({
           email: '',
           password: '',
         });
-        navigate('/dashboard');
+
+        // Redirect based on user role
+        if (userData[0]?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err) {
       setError(err.message || 'An error occurred during login');
@@ -51,6 +76,7 @@ export const Login = ({ onSwitchToRegister }) => {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-gray-900 text-white p-8">
