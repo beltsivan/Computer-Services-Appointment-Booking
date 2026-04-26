@@ -1,145 +1,408 @@
-import { Calendar, Clock, MapPin, User, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../supabaseClient';
+import {
+  Calendar, Clock, CheckCircle, AlertCircle, XCircle,
+  Loader2, ClipboardList, Plus, X, Wrench, Tag,
+} from 'lucide-react';
 
-export const AppointmentsList = ({ fullView = false }) => {
-  const appointments = [
-    {
-      id: 1,
-      service: 'Deep Cleaning',
-      date: '2024-05-15',
-      time: '10:00 AM',
-      location: '123 Main St, New York',
-      provider: 'John Smith',
-      status: 'confirmed',
-      price: '$150',
-    },
-    {
-      id: 2,
-      service: 'Regular Cleaning',
-      date: '2024-05-20',
-      time: '2:00 PM',
-      location: '456 Oak Ave, New York',
-      provider: 'Sarah Johnson',
-      status: 'pending',
-      price: '$100',
-    },
-    {
-      id: 3,
-      service: 'Window Cleaning',
-      date: '2024-05-10',
-      time: '11:30 AM',
-      location: '789 Pine Rd, New York',
-      provider: 'Mike Brown',
-      status: 'completed',
-      price: '$80',
-    },
-    {
-      id: 4,
-      service: 'Carpet Cleaning',
-      date: '2024-05-25',
-      time: '9:00 AM',
-      location: '321 Elm St, New York',
-      provider: 'Emma Wilson',
-      status: 'confirmed',
-      price: '$200',
-    },
-  ];
+/* ─── helpers ─────────────────────────────────────────────── */
+const fmtDate = (d) =>
+  d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+const fmtTime = (t) => {
+  if (!t) return '—';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+};
+const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+const today = () => new Date().toISOString().split('T')[0];
 
-  const displayedAppointments = fullView ? appointments : appointments.slice(0, 3);
+const STATUS_CONFIG = {
+  pending:   { label: 'Pending',   icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
+  approved:  { label: 'Approved',  icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
+  completed: { label: 'Completed', icon: CheckCircle, cls: 'bg-blue-500/10 text-blue-400 border-blue-600/40' },
+  cancelled: { label: 'Cancelled', icon: XCircle,     cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
+};
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-900 text-green-200 border-green-700';
-      case 'pending':
-        return 'bg-yellow-900 text-yellow-200 border-yellow-700';
-      case 'completed':
-        return 'bg-blue-900 text-blue-200 border-blue-700';
-      default:
-        return 'bg-gray-700 text-gray-200 border-gray-600';
-    }
-  };
+/* ─── Book Appointment Modal ──────────────────────────────── */
+const BookModal = ({ services, onClose, onBooked }) => {
+  const [step, setStep] = useState(1); // 1=pick service, 2=fill details
+  const [selectedService, setSelectedService] = useState(null);
+  const [formData, setFormData] = useState({ date: '', time: '', concern: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return <CheckCircle size={16} />;
-      case 'pending':
-        return <AlertCircle size={16} />;
-      default:
-        return null;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.date || !formData.time) { setError('Date and time are required.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const { error: insertErr } = await supabase.from('appointments').insert([{
+        customer_id: user.id,
+        service_id: selectedService.id,
+        appointment_date: formData.date,
+        appointment_time: formData.time,
+        concern_description: formData.concern || null,
+        status: 'pending',
+      }]);
+      if (insertErr) throw insertErr;
+      setSuccess(true);
+      setTimeout(() => { onBooked(); onClose(); }, 1500);
+    } catch (err) {
+      setError(err.message || 'Booking failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      {displayedAppointments.map((appointment) => (
-        <div
-          key={appointment.id}
-          className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:border-orange-600 transition cursor-pointer group"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <h3 className="text-lg font-bold text-white">{appointment.service}</h3>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${getStatusColor(appointment.status)}`}>
-                  {getStatusIcon(appointment.status)}
-                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                <div className="flex items-center gap-2 text-gray-300">
-                  <Calendar size={16} className="text-orange-500" />
-                  <span>{new Date(appointment.date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <Clock size={16} className="text-orange-500" />
-                  <span>{appointment.time}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <MapPin size={16} className="text-orange-500" />
-                  <span>{appointment.location}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <User size={16} className="text-orange-500" />
-                  <span>{appointment.provider}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-right ml-4 flex flex-col items-end justify-between">
-              <span className="text-2xl font-bold text-orange-500">{appointment.price}</span>
-              <ChevronRight size={24} className="text-gray-600 group-hover:text-orange-600 transition mt-8" />
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-4 pt-4 border-t border-gray-700">
-            <button className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-semibold transition">
-              Reschedule
-            </button>
-            <button className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg font-semibold transition">
-              Cancel
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
+          <h3 className="text-xl font-bold text-white">
+            {step === 1 ? 'Select a Service' : 'Booking Details'}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition">
+            <X size={22} />
+          </button>
         </div>
-      ))}
 
-      {!fullView && appointments.length > 3 && (
-        <button className="w-full bg-gray-800 border border-gray-700 hover:border-orange-600 text-orange-600 hover:text-orange-500 py-3 rounded-xl font-semibold transition mt-6">
-          View All Appointments
-        </button>
-      )}
+        <div className="p-6">
+          {/* ── Step 1: Pick service ── */}
+          {step === 1 && (
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {services.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">No services available yet.</p>
+              ) : (
+                services.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => { setSelectedService(s); setStep(2); }}
+                    className="w-full flex items-start gap-4 bg-gray-700/60 hover:bg-gray-700 border border-gray-600 hover:border-orange-500 rounded-xl px-5 py-4 text-left transition group"
+                  >
+                    <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-orange-600/30 transition">
+                      <Wrench size={18} className="text-orange-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold text-sm">{s.name}</p>
+                      {s.category && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Tag size={11} className="text-gray-500" />
+                          <span className="text-gray-500 text-xs">{s.category}</span>
+                        </div>
+                      )}
+                      {s.description && (
+                        <p className="text-gray-400 text-xs mt-1 line-clamp-2">{s.description}</p>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-orange-400 font-bold text-sm">
+                        {formatPeso(s.price_estimate ?? s.price)}
+                      </p>
+                      {s.duration_minutes && (
+                        <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
+                      )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
 
-      {displayedAppointments.length === 0 && (
-        <div className="text-center py-12">
-          <Calendar size={48} className="mx-auto text-gray-600 mb-4" />
-          <p className="text-gray-400 text-lg">No appointments scheduled yet</p>
-          <button className="mt-4 bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded-lg font-semibold transition">
+          {/* ── Step 2: Fill details ── */}
+          {step === 2 && (
+            <>
+              {/* Selected service recap */}
+              <div className="flex items-center gap-3 bg-orange-600/10 border border-orange-600/30 rounded-xl px-4 py-3 mb-5">
+                <Wrench size={16} className="text-orange-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm">{selectedService.name}</p>
+                  <p className="text-orange-400 text-xs font-semibold">{formatPeso(selectedService.price_estimate ?? selectedService.price)}</p>
+                </div>
+                <button
+                  onClick={() => setStep(1)}
+                  className="text-gray-400 hover:text-white text-xs underline transition"
+                >
+                  Change
+                </button>
+              </div>
+
+              {success ? (
+                <div className="flex flex-col items-center py-8">
+                  <CheckCircle size={48} className="text-emerald-400 mb-3" />
+                  <p className="text-white font-bold text-lg">Booking Submitted!</p>
+                  <p className="text-gray-400 text-sm mt-1">Waiting for admin approval.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <div className="bg-red-900/40 border border-red-700 text-red-300 px-4 py-3 rounded-xl text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Preferred Date <span className="text-orange-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      min={today()}
+                      value={formData.date}
+                      onChange={(e) => setFormData(p => ({ ...p, date: e.target.value }))}
+                      required
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-orange-500 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Preferred Time <span className="text-orange-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.time}
+                      onChange={(e) => setFormData(p => ({ ...p, time: e.target.value }))}
+                      required
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-orange-500 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Concern / Description <span className="text-gray-500 text-xs">(optional)</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formData.concern}
+                      onChange={(e) => setFormData(p => ({ ...p, concern: e.target.value }))}
+                      placeholder="Describe your concern or what you need..."
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 resize-none text-sm transition"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 rounded-xl transition"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
+                    >
+                      {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                      {loading ? 'Booking...' : 'Book Appointment'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Main component ──────────────────────────────────────── */
+export const AppointmentsList = ({ fullView = false }) => {
+  const [appointments, setAppointments] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showBook, setShowBook] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [aptRes, svcRes] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('id, appointment_date, appointment_time, concern_description, status, created_at, services ( name, price_estimate, duration_minutes )')
+          .eq('customer_id', user.id)
+          .order('appointment_date', { ascending: false }),
+        supabase
+          .from('services')
+          .select('*')
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (aptRes.error) throw aptRes.error;
+      if (svcRes.error) throw svcRes.error;
+
+      setAppointments(aptRes.data || []);
+      setServices(svcRes.data || []);
+    } catch (err) {
+      setError('Failed to load appointments.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const displayed = fullView ? appointments : appointments.slice(0, 3);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <Loader2 size={36} className="text-orange-500 animate-spin mb-3" />
+        <p className="text-gray-400">Loading your appointments...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-900/40 border border-red-700 text-red-300 px-4 py-3 rounded-xl text-sm">
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Book Button (only in full view) */}
+      {fullView && (
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => setShowBook(true)}
+            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold px-5 py-2.5 rounded-xl transition"
+          >
+            <Plus size={18} />
             Book an Appointment
           </button>
         </div>
       )}
-    </div>
+
+      {/* Empty state */}
+      {appointments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-gray-800 border border-gray-700 rounded-2xl">
+          <ClipboardList size={52} className="text-gray-600 mb-4" />
+          <p className="text-gray-400 text-lg font-medium">No appointments yet</p>
+          <p className="text-gray-500 text-sm mb-6">Book your first appointment to get started</p>
+          <button
+            onClick={() => setShowBook(true)}
+            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold px-6 py-2.5 rounded-xl transition"
+          >
+            <Plus size={18} />
+            Book an Appointment
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {displayed.map((apt) => {
+            const cfg = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pending;
+            const StatusIcon = cfg.icon;
+            const hasSuggestion = apt.concern_description?.startsWith('[Admin suggested schedule]');
+
+            return (
+              <div
+                key={apt.id}
+                className="bg-gray-800 border border-gray-700 hover:border-orange-500/40 rounded-2xl p-6 transition-all duration-200"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                  {/* Service icon */}
+                  <div className="w-12 h-12 bg-orange-600/15 border border-orange-600/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Wrench size={22} className="text-orange-400" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    {/* Service name + status */}
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <h3 className="text-white font-bold text-base">
+                        {apt.services?.name || 'Service'}
+                      </h3>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
+                        <StatusIcon size={12} />
+                        {cfg.label}
+                      </span>
+                    </div>
+
+                    {/* Date / time / price */}
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-3">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={14} className="text-orange-500" />
+                        {fmtDate(apt.appointment_date)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={14} className="text-orange-500" />
+                        {fmtTime(apt.appointment_time)}
+                      </div>
+                      {apt.services?.price_estimate != null && (
+                        <div className="text-orange-400 font-bold">
+                          {formatPeso(apt.services.price_estimate)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Concern / admin suggestion */}
+                    {apt.concern_description && (
+                      <div className={`rounded-xl px-4 py-2.5 text-sm mt-2 ${hasSuggestion ? 'bg-blue-500/10 border border-blue-500/30 text-blue-300' : 'bg-gray-700/60 text-gray-400'}`}>
+                        {hasSuggestion ? (
+                          <>
+                            <p className="font-semibold text-blue-400 mb-1">📅 Admin Suggested a Schedule</p>
+                            <p>{apt.concern_description.replace('[Admin suggested schedule]: ', '')}</p>
+                          </>
+                        ) : (
+                          <p className="italic">{apt.concern_description}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Approval status message */}
+                    {apt.status === 'pending' && (
+                      <p className="text-yellow-400/80 text-xs mt-3 flex items-center gap-1.5">
+                        <AlertCircle size={12} />
+                        Awaiting admin approval
+                      </p>
+                    )}
+                    {apt.status === 'approved' && (
+                      <p className="text-emerald-400/80 text-xs mt-3 flex items-center gap-1.5">
+                        <CheckCircle size={12} />
+                        Your appointment is confirmed!
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* View all link in mini mode */}
+          {!fullView && appointments.length > 3 && (
+            <div className="text-center">
+              <p className="text-gray-500 text-sm">+{appointments.length - 3} more appointments</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showBook && (
+        <BookModal
+          services={services}
+          onClose={() => setShowBook(false)}
+          onBooked={fetchData}
+        />
+      )}
+    </>
   );
 };
+
+export default AppointmentsList;
