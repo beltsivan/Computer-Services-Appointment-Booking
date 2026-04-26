@@ -24,14 +24,14 @@ export const DashboardContent = ({ activeTab, sidebarOpen }) => {
   const fetchUserData = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      
+
       if (!authUser) {
         navigate('/Auth');
         return;
       }
 
       setUser(authUser);
-      
+
       // Fetch user stats
       setUserStats({
         upcomingAppointments: 5,
@@ -89,7 +89,7 @@ export const DashboardContent = ({ activeTab, sidebarOpen }) => {
             </div>
 
             {/* Profile Card */}
-            <ProfileCard user={user} />
+
 
             {/* Recent Appointments */}
             <div>
@@ -102,9 +102,9 @@ export const DashboardContent = ({ activeTab, sidebarOpen }) => {
         {/* Appointments Tab */}
         {activeTab === 'appointments' && (
           <div>
-            <div className="mb-8">
+            <div className="mb-6">
               <h2 className="text-4xl font-bold mb-2">My Appointments</h2>
-              <p className="text-gray-400">View and manage all your appointments</p>
+              <p className="text-gray-400">Book and track all your service appointments</p>
             </div>
             <AppointmentsList fullView={true} />
           </div>

@@ -18,6 +18,13 @@ export const Services = () => {
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getServicePrice = (service) => service.price_estimate ?? service.price ?? '';
+
+  const formatPeso = (amount) => {
+    const price = Number(amount);
+    return Number.isFinite(price) ? `₱${price.toFixed(2)}` : '₱0.00';
+  };
+
   useEffect(() => {
     fetchServices();
   }, []);
@@ -47,7 +54,7 @@ export const Services = () => {
         name: service.name,
         category: service.category,
         description: service.description,
-        price: service.price,
+        price: getServicePrice(service),
         duration_minutes: service.duration_minutes,
       });
     } else {
@@ -56,7 +63,7 @@ export const Services = () => {
         name: '',
         category: '',
         description: '',
-        price_estimate: '',
+        price: '',
         duration_minutes: '',
       });
     }
@@ -84,8 +91,15 @@ export const Services = () => {
     setError('');
     setSuccess('');
 
-    if (!formData.name || !formData.price) {
+    const parsedPrice = Number(formData.price);
+
+    if (!formData.name || formData.price === '') {
       setError('Name and Price are required');
+      return;
+    }
+
+    if (!Number.isFinite(parsedPrice)) {
+      setError('Please enter a valid price');
       return;
     }
 
@@ -101,9 +115,9 @@ export const Services = () => {
             name: formData.name,
             description: formData.description,
             category: formData.category,
-            price_estimate: parseFloat(formData.price),
+            price_estimate: parsedPrice,
             duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : null,
-            updated_at: new Date().toISOString(),
+
           })
           .eq('id', editingService.id);
 
@@ -122,7 +136,7 @@ export const Services = () => {
               name: formData.name,
               category: formData.category,
               description: formData.description,
-              price_estimate: parseFloat(formData.price),
+              price_estimate: parsedPrice,
               duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : null,
             }
           ]);
@@ -219,7 +233,7 @@ export const Services = () => {
               )}
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <p className="text-orange-500 font-bold text-xl">${parseFloat(service.price).toFixed(2)}</p>
+                  <p className="text-orange-500 font-bold text-xl">{formatPeso(getServicePrice(service))}</p>
                   {service.duration_minutes && (
                     <p className="text-gray-400 text-sm">{service.duration_minutes} min</p>
                   )}
