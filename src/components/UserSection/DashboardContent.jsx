@@ -7,7 +7,7 @@ import { AppointmentsList } from './AppointmentsList';
 import { ProfileSettings } from './ProfileSettings';
 import { Calendar, Clock, CheckCircle } from 'lucide-react';
 
-export const DashboardContent = ({ activeTab, sidebarOpen }) => {
+export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userStats, setUserStats] = useState({
@@ -45,19 +45,33 @@ export const DashboardContent = ({ activeTab, sidebarOpen }) => {
     }
   };
 
-  if (loading) {
+if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ marginLeft: sidebarOpen ? '256px' : '0' }}>
-        <div className="animate-spin">
-          <Calendar className="text-orange-600" size={48} />
+      <main 
+        className={`
+          transition-all duration-300 bg-gray-900 min-h-screen w-full
+          pt-16 lg:pt-16
+          ${sidebarMinimized ? 'lg:pl-16' : 'lg:pl-64'}
+        `}
+      >
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin">
+            <Calendar className="text-orange-600" size={48} />
+          </div>
         </div>
-      </div>
+      </main>
     );
   }
 
-  return (
-    <main className="transition-all duration-300">
-      <div className="p-8" style={{ marginLeft: sidebarOpen ? '256px' : '0' }}>
+return (
+    <main 
+      className={`
+        transition-all duration-300 bg-gray-900 min-h-screen w-full
+        pt-16 lg:pt-16
+        ${sidebarMinimized ? 'lg:pl-16' : 'lg:pl-64'}
+      `}
+    >
+      <div className="p-4 md:p-6 lg:p-8 w-full max-w-full overflow-hidden">
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-8">

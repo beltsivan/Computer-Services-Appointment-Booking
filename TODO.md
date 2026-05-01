@@ -1,18 +1,33 @@
-# Fix Admin Layout - TODO
+# TODO - User Dashboard Design Update
 
-- [x] Analyze current layout structure
-- [x] Update Admin.jsx - Add sidebarMinimized state
-- [x] Update SideBar.jsx - Add minimize toggle button
-- [x] Update TopBar.jsx - Fix positioning for all sidebar states
-- [x] Update Main.jsx - Fix content padding so not covered
+## Plan: Match User Dashboard design to Admin Dashboard (without modifying Admin)
 
-## Layout States:
-- Sidebar open: `pl-64` (full width)
-- Sidebar minimized: `pl-16` (icon-only)
-- Sidebar closed: `pl-0`
+### Files to Edit:
 
-## Completed Changes:
-1. Added `sidebarMinimized` state to Admin.jsx
-2. Added minimize toggle button to SideBar.jsx with chevron icons
-3. Fixed TopBar.jsx positioning for all sidebar states
-4. Fixed Main.jsx content padding with `lg:pt-16` for proper spacing
+1. **src/pages/UserDashboard.jsx**
+   - Add sidebar minimize state
+   - Add window resize handling (like Admin)
+   - Add sidebar minimize toggle handler
+   - Update sidebar props
+
+2. **src/components/UserSection/UserSidebar.jsx**
+   - Add minimize button for desktop
+   - Add overlay backdrop for mobile (like Admin)
+   - Add minimized prop handling
+   - Update styling to match Admin sidebar
+
+3. **src/components/UserSection/UserTopbar.jsx**
+   - Change to fixed positioning with sidebar-aware left margin
+   - Update to use `sidebarMinimized` prop (like Admin Topbar)
+
+4. **src/components/UserSection/DashboardContent.jsx**
+   - Change to fixed positioning with proper padding (like Admin Main)
+   - Update layout to match Admin Main component
+
+### Steps:
+- [x] 1. Update UserDashboard.jsx with admin-like state management
+- [x] 2. Update UserSidebar.jsx with minimize and overlay features
+- [x] 3. Update UserTopbar.jsx with fixed positioning
+- [x] 4. Update DashboardContent.jsx with proper fixed positioning
+
+## Completed!
