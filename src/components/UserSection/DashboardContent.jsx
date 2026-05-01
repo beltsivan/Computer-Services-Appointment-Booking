@@ -5,6 +5,7 @@ import { ProfileCard } from './ProfileCard';
 import { StatsCard } from './StatsCard';
 import { AppointmentsList } from './AppointmentsList';
 import { ProfileSettings } from './ProfileSettings';
+import { UserCalendar } from './UserCalendar';
 import { Calendar, Clock, CheckCircle } from 'lucide-react';
 
 export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
@@ -113,7 +114,7 @@ return (
           </div>
         )}
 
-        {/* Appointments Tab */}
+{/* Appointments Tab */}
         {activeTab === 'appointments' && (
           <div>
             <div className="mb-6">
@@ -121,6 +122,17 @@ return (
               <p className="text-gray-400">Book and track all your service appointments</p>
             </div>
             <AppointmentsList fullView={true} />
+          </div>
+        )}
+
+        {/* Calendar Tab */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-4xl font-bold mb-2">Calendar</h2>
+              <p className="text-gray-400">View your appointment schedule</p>
+            </div>
+            <UserCalendar />
           </div>
         )}
 

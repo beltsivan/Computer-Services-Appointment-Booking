@@ -66,6 +66,13 @@ export const UserSidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiv
             minimized={sidebarMinimized}
           />
           <NavItem 
+            icon={Calendar} 
+            label={sidebarMinimized ? '' : 'Calendar'} 
+            active={activeTab === 'calendar'} 
+            onClick={() => setActiveTab('calendar')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
             icon={Clock} 
             label={sidebarMinimized ? '' : 'My Appointments'} 
             active={activeTab === 'appointments'} 
