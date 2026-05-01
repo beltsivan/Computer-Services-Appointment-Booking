@@ -9,11 +9,11 @@ return (
     <main 
       className={`
         transition-all duration-300 bg-gray-900 min-h-screen w-full
-        pt-16 lg:pt-16
+        pt-12 lg:pt-12
         ${sidebarMinimized ? 'lg:pl-16' : 'lg:pl-64'}
       `}
     >
-      <div className="p-4 md:p-6 lg:p-8 w-full max-w-full overflow-hidden">
+      <div className="my-4 p-4 md:p-6 lg:p-8 w-full max-w-full overflow-hidden">
         
         {/* Overview */}
         {activeTab === 'overview' && (

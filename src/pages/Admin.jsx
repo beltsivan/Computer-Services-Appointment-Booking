@@ -60,7 +60,7 @@ export const Admin = () => {
           transition-all duration-300 min-h-screen w-full
         `}
       >
-        {/* Topbar - fixed on mobile, fixed alongside sidebar on desktop */}
+        
         <Topbar 
           sidebarOpen={sidebarOpen} 
           sidebarMinimized={sidebarMinimized}
