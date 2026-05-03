@@ -34,7 +34,7 @@ export const Table = ({ onRefresh }) => {
       // Fetch appointments with user and service details
       const { data: aptData, error: aptErr } = await supabase
         .from('appointments')
-        .select('id, appointment_date, appointment_time, status, created_at, customer_id, services ( name, price_estimate )')
+        .select('id, appointment_date, appointment_time, status, created_at, customer_id, service_id, services!appointments_service_id_fkey ( name, price_estimate )')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -58,7 +58,7 @@ export const Table = ({ onRefresh }) => {
 
       setAppointments(merged);
     } catch (e) {
-      setError('Failed to load appointments');
+      setError(`Failed to load appointments: ${e.message}`);
       console.error(e);
     } finally {
       setLoading(false);
@@ -163,7 +163,7 @@ export const Table = ({ onRefresh }) => {
                             {getCustomerName(apt)}
                           </p>
                           <p className="text-gray-500 text-xs md:hidden truncate">
-                            {apt.services?.name}
+                            {apt.services?.[0]?.name}
                           </p>
                         </div>
                       </div>
@@ -171,7 +171,7 @@ export const Table = ({ onRefresh }) => {
 
                     <td className="px-4 md:px-6 py-4 hidden md:table-cell">
                       <span className="text-gray-300">
-                        {apt.services?.name || '—'}
+                        {apt.services?.[0]?.name || '—'}
                       </span>
                     </td>
 

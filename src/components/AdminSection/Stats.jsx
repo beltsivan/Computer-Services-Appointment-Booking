@@ -45,14 +45,14 @@ export const Stats = () => {
       // Fetch completed appointments to calculate revenue
       const { data: completedAppointments, error: completedError } = await supabase
         .from('appointments')
-        .select('id, services ( price_estimate )')
+        .select('id, services!appointments_service_id_fkey ( price_estimate )')
         .eq('status', 'completed');
       
       if (completedError) throw completedError;
 
       // Calculate total revenue
       const revenue = completedAppointments?.reduce((sum, apt) => {
-        const price = apt.services?.price_estimate || 0;
+        const price = apt.services?.[0]?.price_estimate || 0;
         return sum + Number(price);
       }, 0) || 0;
 

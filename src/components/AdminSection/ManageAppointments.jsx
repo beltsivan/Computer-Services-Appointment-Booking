@@ -41,7 +41,7 @@ export const ManageAppointments = () => {
       // Fetch appointments + services
       const { data: aptData, error: aptErr } = await supabase
         .from('appointments')
-        .select('id, appointment_date, appointment_time, concern_description, status, created_at, customer_id, services ( name, price_estimate )')
+        .select('id, appointment_date, appointment_time, concern_description, status, created_at, customer_id, service_id, services!appointments_service_id_fkey ( name, price_estimate )')
         .order('appointment_date', { ascending: false });
       if (aptErr) throw aptErr;
 
@@ -273,12 +273,12 @@ export const ManageAppointments = () => {
                     </div>
 
                     {/* Service */}
-                    {apt.services && (
+                    {apt.services?.[0] && (
                       <div className="inline-flex items-center gap-2 bg-gray-700/60 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-300 mb-3">
-                        <span className="font-medium text-white">{apt.services.name}</span>
-                        {apt.services.price_estimate != null && (
+                        <span className="font-medium text-white">{apt.services[0].name}</span>
+                        {apt.services[0]?.price_estimate != null && (
                           <span className="text-orange-400 font-semibold">
-                            ₱{Number(apt.services.price_estimate).toLocaleString()}
+                            ₱{Number(apt.services[0]?.price_estimate).toLocaleString()}
                           </span>
                         )}
                       </div>
