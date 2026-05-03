@@ -1,8 +1,8 @@
-import { Calendar, Clock, User, Settings, LogOut } from 'lucide-react';
+import { Calendar, Clock, User, Settings, LogOut, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
-export const UserSidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
+export const UserSidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiveTab, onMinimizeToggle }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -15,60 +15,112 @@ export const UserSidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
   };
 
   return (
-    <aside className={`fixed top-0 left-0 h-screen bg-gray-800 border-r border-gray-700 transition-transform duration-300 z-40 ${sidebarOpen ? 'w-64' : '-translate-x-full'}`}>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-orange-600">AppointmentHub</h1>
-        <p className="text-sm text-gray-400 mt-1">User Dashboard</p>
-      </div>
+    <>
+      {/* Overlay backdrop for mobile when sidebar is open */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setActiveTab(activeTab)}
+        />
+      )}
+      
+      <aside 
+        className={`fixed top-0 left-0 h-screen bg-gray-800 border-r border-gray-700 transition-transform duration-300 z-40 
+          ${sidebarMinimized ? 'w-16' : 'w-64'}
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+          lg:block
+        `}
+      >
+        {/* Logo & Brand */}
+        <div className={`p-4 ${sidebarMinimized ? 'px-2' : ''}`}>
+          <div className={`flex items-center ${sidebarMinimized ? 'justify-center' : 'gap-3'}`}>
+            <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Wrench size={20} className="text-white" />
+            </div>
+            {!sidebarMinimized && (
+              <div>
+                <h1 className="text-xl font-bold text-orange-500">AppointmentHub</h1>
+                <p className="text-xs text-gray-400 mt-0.5">User Panel</p>
+              </div>
+            )}
+          </div>
+        </div>
 
-      <nav className="mt-8 space-y-2 px-4">
-        <NavItem 
-          icon={Calendar} 
-          label="Overview" 
-          active={activeTab === 'overview'} 
-          onClick={() => setActiveTab('overview')} 
-        />
-        <NavItem 
-          icon={Clock} 
-          label="My Appointments" 
-          active={activeTab === 'appointments'} 
-          onClick={() => setActiveTab('appointments')} 
-        />
-        <NavItem 
-          icon={User} 
-          label="Profile" 
-          active={activeTab === 'profile'} 
-          onClick={() => setActiveTab('profile')} 
-        />
-        <NavItem 
-          icon={Settings} 
-          label="Settings" 
-          active={activeTab === 'settings'} 
-          onClick={() => setActiveTab('settings')} 
-        />
-      </nav>
-
-      <div className="absolute bottom-6 left-4 w-56">
-        <button 
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500 hover:bg-opacity-10 rounded-lg transition">
-          <LogOut size={20} />
-          <span>Logout</span>
+        {/* Minimize Toggle Button - only show on desktop */}
+        <button
+          onClick={onMinimizeToggle}
+          className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-gray-700 border border-gray-600 rounded-full items-center justify-center text-gray-400 hover:text-white hover:bg-gray-600 transition z-50"
+          aria-label={sidebarMinimized ? 'Expand sidebar' : 'Minimize sidebar'}
+        >
+          {sidebarMinimized ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
-      </div>
-    </aside>
+
+        {/* Navigation */}
+        <nav className={`mt-4 space-y-2 ${sidebarMinimized ? 'px-2' : 'px-4'}`}>
+          <NavItem 
+            icon={Calendar} 
+            label={sidebarMinimized ? '' : 'Overview'} 
+            active={activeTab === 'overview'} 
+            onClick={() => setActiveTab('overview')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
+            icon={Calendar} 
+            label={sidebarMinimized ? '' : 'Calendar'} 
+            active={activeTab === 'calendar'} 
+            onClick={() => setActiveTab('calendar')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
+            icon={Clock} 
+            label={sidebarMinimized ? '' : 'My Appointments'} 
+            active={activeTab === 'appointments'} 
+            onClick={() => setActiveTab('appointments')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
+            icon={User} 
+            label={sidebarMinimized ? '' : 'Profile'} 
+            active={activeTab === 'profile'} 
+            onClick={() => setActiveTab('profile')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
+            icon={Settings} 
+            label={sidebarMinimized ? '' : 'Settings'} 
+            active={activeTab === 'settings'} 
+            onClick={() => setActiveTab('settings')} 
+            minimized={sidebarMinimized}
+          />
+        </nav>
+
+        {/* Logout Button */}
+        <div className={`absolute bottom-6 ${sidebarMinimized ? 'left-2 right-2 w-auto' : 'left-4 w-[calc(100%-32px)]'}`}>
+          <button 
+            onClick={handleLogout}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition font-medium ${sidebarMinimized ? 'justify-center px-2' : ''}`}
+          >
+            <LogOut size={20} />
+            {!sidebarMinimized && <span>Logout</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };
 
-const NavItem = ({ icon: Icon, label, active, onClick }) => (
+const NavItem = ({ icon: Icon, label, active, onClick, minimized }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-      active ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-700'
-    }`}
+    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition ${
+      active 
+        ? 'bg-orange-600 text-white' 
+        : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+    } ${minimized ? 'justify-center px-2' : ''}`}
   >
     <Icon size={20} />
-    <span className="font-medium">{label}</span>
+    {!minimized && <span className="font-medium text-sm">{label}</span>}
   </button>
 );
 

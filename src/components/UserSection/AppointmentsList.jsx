@@ -26,7 +26,7 @@ const STATUS_CONFIG = {
 
 /* ─── Book Appointment Modal ──────────────────────────────── */
 const BookModal = ({ services, onClose, onBooked }) => {
-  const [step, setStep] = useState(1); // 1=pick service, 2=fill details
+  const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
   const [formData, setFormData] = useState({ date: '', time: '', concern: '' });
   const [loading, setLoading] = useState(false);
@@ -62,7 +62,6 @@ const BookModal = ({ services, onClose, onBooked }) => {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-        {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
           <h3 className="text-xl font-bold text-white">
             {step === 1 ? 'Select a Service' : 'Booking Details'}
@@ -73,7 +72,6 @@ const BookModal = ({ services, onClose, onBooked }) => {
         </div>
 
         <div className="p-6">
-          {/* ── Step 1: Pick service ── */}
           {step === 1 && (
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
               {services.length === 0 ? (
@@ -114,10 +112,8 @@ const BookModal = ({ services, onClose, onBooked }) => {
             </div>
           )}
 
-          {/* ── Step 2: Fill details ── */}
           {step === 2 && (
             <>
-              {/* Selected service recap */}
               <div className="flex items-center gap-3 bg-orange-600/10 border border-orange-600/30 rounded-xl px-4 py-3 mb-5">
                 <Wrench size={16} className="text-orange-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -235,7 +231,7 @@ export const AppointmentsList = ({ fullView = false }) => {
       const [aptRes, svcRes] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, appointment_date, appointment_time, concern_description, status, created_at, services ( name, price_estimate, duration_minutes )')
+          .select('id, appointment_date, appointment_time, concern_description, status, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes )')
           .eq('customer_id', user.id)
           .order('appointment_date', { ascending: false }),
         supabase
@@ -318,16 +314,14 @@ export const AppointmentsList = ({ fullView = false }) => {
                 className="bg-gray-800 border border-gray-700 hover:border-orange-500/40 rounded-2xl p-6 transition-all duration-200"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                  {/* Service icon */}
                   <div className="w-12 h-12 bg-orange-600/15 border border-orange-600/30 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Wrench size={22} className="text-orange-400" />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    {/* Service name + status */}
                     <div className="flex flex-wrap items-center gap-3 mb-3">
                       <h3 className="text-white font-bold text-base">
-                        {apt.services?.name || 'Service'}
+                        {apt.services?.[0]?.name || 'Service'}
                       </h3>
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
                         <StatusIcon size={12} />
@@ -335,7 +329,6 @@ export const AppointmentsList = ({ fullView = false }) => {
                       </span>
                     </div>
 
-                    {/* Date / time / price */}
                     <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-3">
                       <div className="flex items-center gap-1.5">
                         <Calendar size={14} className="text-orange-500" />
@@ -345,14 +338,13 @@ export const AppointmentsList = ({ fullView = false }) => {
                         <Clock size={14} className="text-orange-500" />
                         {fmtTime(apt.appointment_time)}
                       </div>
-                      {apt.services?.price_estimate != null && (
+                      {apt.services?.[0]?.price_estimate != null && (
                         <div className="text-orange-400 font-bold">
-                          {formatPeso(apt.services.price_estimate)}
+                          {formatPeso(apt.services[0].price_estimate)}
                         </div>
                       )}
                     </div>
 
-                    {/* Concern / admin suggestion */}
                     {apt.concern_description && (
                       <div className={`rounded-xl px-4 py-2.5 text-sm mt-2 ${hasSuggestion ? 'bg-blue-500/10 border border-blue-500/30 text-blue-300' : 'bg-gray-700/60 text-gray-400'}`}>
                         {hasSuggestion ? (
@@ -366,7 +358,6 @@ export const AppointmentsList = ({ fullView = false }) => {
                       </div>
                     )}
 
-                    {/* Approval status message */}
                     {apt.status === 'pending' && (
                       <p className="text-yellow-400/80 text-xs mt-3 flex items-center gap-1.5">
                         <AlertCircle size={12} />
@@ -385,7 +376,6 @@ export const AppointmentsList = ({ fullView = false }) => {
             );
           })}
 
-          {/* View all link in mini mode */}
           {!fullView && appointments.length > 3 && (
             <div className="text-center">
               <p className="text-gray-500 text-sm">+{appointments.length - 3} more appointments</p>
