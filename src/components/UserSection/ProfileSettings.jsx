@@ -54,7 +54,7 @@ export const ProfileSettings = ({ user, onUpdate }) => {
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         onUpdate();
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to update profile' });
     } finally {
       setLoading(false);
@@ -92,7 +92,7 @@ export const ProfileSettings = ({ user, onUpdate }) => {
           confirmPassword: '',
         });
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to update password' });
     } finally {
       setLoading(false);
@@ -103,11 +103,10 @@ export const ProfileSettings = ({ user, onUpdate }) => {
     <div className="space-y-8">
       {/* Message Alert */}
       {message.text && (
-        <div className={`p-4 rounded-lg flex items-center gap-3 ${
-          message.type === 'success'
+        <div className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success'
             ? 'bg-green-900 border border-green-700 text-green-200'
             : 'bg-red-900 border border-red-700 text-red-200'
-        }`}>
+          }`}>
           <AlertCircle size={20} />
           <span>{message.text}</span>
         </div>
@@ -116,7 +115,7 @@ export const ProfileSettings = ({ user, onUpdate }) => {
       {/* Profile Information */}
       <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8">
         <h2 className="text-2xl font-bold mb-6">Profile Information</h2>
-        
+
         <form onSubmit={handleUpdateProfile} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

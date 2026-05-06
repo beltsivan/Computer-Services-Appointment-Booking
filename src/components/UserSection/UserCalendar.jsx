@@ -29,7 +29,7 @@ export const UserCalendar = () => {
         .from('appointments')
         .select('id, appointment_date, appointment_time, status, services ( name )')
         .eq('customer_id', user.id)
-        .in('status', ['pending', 'approved'])
+        .eq('status', 'pending')
         .order('appointment_date', { ascending: true });
 
       if (error) throw error;
@@ -197,7 +197,7 @@ export const UserCalendar = () => {
                         <span
                           key={i}
                           className={`w-1.5 h-1.5 rounded-full ${
-                            apt.status === 'approved' ? 'bg-emerald-400' : 'bg-yellow-400'
+                            'bg-yellow-400'
                           }`}
                         />
                       ))}
@@ -232,7 +232,7 @@ export const UserCalendar = () => {
           <div className="space-y-1">
             {getAppointmentsForDay(calendarDays.find((d) => formatDateKey(d) === hoveredDate)).map((apt) => (
               <div key={apt.id} className="flex items-center gap-2 text-xs">
-                <span className={`w-2 h-2 rounded-full ${apt.status === 'approved' ? 'bg-emerald-400' : 'bg-yellow-400'}`} />
+                <span className="w-2 h-2 rounded-full bg-yellow-400" />
                 <span className="text-gray-300">{apt.services?.name || 'Service'}</span>
                 <span className="text-gray-500">
                   {apt.appointment_time && formatTime(apt.appointment_time)}
@@ -249,10 +249,6 @@ export const UserCalendar = () => {
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-yellow-400" />
           <span className="text-gray-400 text-sm">Pending</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-gray-400 text-sm">Approved</span>
         </div>
       </div>
     </div>

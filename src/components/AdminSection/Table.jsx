@@ -17,7 +17,7 @@ const fmtTime = (t) => {
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 };
 
-export const Table = ({ onRefresh }) => {
+export const Table = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -128,7 +128,7 @@ export const Table = ({ onRefresh }) => {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${appointments.length > 5 ? 'max-h-[28rem] overflow-y-auto' : ''}`}>
         <table className="w-full">
           <thead className="bg-gray-700/50">
             <tr>

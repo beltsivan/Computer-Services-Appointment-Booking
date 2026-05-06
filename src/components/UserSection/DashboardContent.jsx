@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { ProfileCard } from './ProfileCard';
@@ -8,7 +8,7 @@ import { ProfileSettings } from './ProfileSettings';
 import { UserCalendar } from './UserCalendar';
 import { Calendar, Clock, CheckCircle } from 'lucide-react';
 
-export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
+export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userStats, setUserStats] = useState({
@@ -18,11 +18,7 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
 
@@ -33,22 +29,50 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
 
       setUser(authUser);
 
-      // Fetch user stats
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('status')
+        .eq('customer_id', authUser.id);
+
+      if (appointmentsError) throw appointmentsError;
+
+      const stats = (appointments || []).reduce((acc, appointment) => {
+        acc.totalBookings += 1;
+
+        if (['pending', 'approved'].includes(appointment.status)) {
+          acc.upcomingAppointments += 1;
+        }
+
+        if (appointment.status === 'completed') {
+          acc.completedAppointments += 1;
+        }
+
+        return acc;
+      }, {
+        upcomingAppointments: 0,
+        completedAppointments: 0,
+        totalBookings: 0,
+      });
+
       setUserStats({
-        upcomingAppointments: 5,
-        completedAppointments: 12,
-        totalBookings: 17,
+        upcomingAppointments: stats.upcomingAppointments,
+        completedAppointments: stats.completedAppointments,
+        totalBookings: stats.totalBookings,
       });
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
-if (loading) {
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
+
+  if (loading) {
     return (
-      <main 
+      <main
         className={`
           transition-all duration-300 bg-gray-900 min-h-screen w-full
           pt-16 lg:pt-16
@@ -64,8 +88,8 @@ if (loading) {
     );
   }
 
-return (
-    <main 
+  return (
+    <main
       className={`
         transition-all duration-300 bg-gray-900 min-h-screen w-full
         pt-16 lg:pt-16
@@ -114,7 +138,7 @@ return (
           </div>
         )}
 
-{/* Appointments Tab */}
+        {/* Appointments Tab */}
         {activeTab === 'appointments' && (
           <div>
             <div className="mb-6">

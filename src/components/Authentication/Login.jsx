@@ -3,7 +3,7 @@ import { Mail, Lock } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
-export const Login = ({ onSwitchToRegister }) => {
+export const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',

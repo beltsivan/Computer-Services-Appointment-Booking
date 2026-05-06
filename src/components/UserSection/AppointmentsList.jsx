@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import {
   Calendar, Clock, CheckCircle, AlertCircle, XCircle,
-  Loader2, ClipboardList, Plus, X, Wrench, Tag,
+  Loader2, ClipboardList, Plus, X, Wrench, Tag, Search,
 } from 'lucide-react';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -15,32 +15,122 @@ const fmtTime = (t) => {
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 };
 const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().split('T')[0];
+};
+const normalizeTime = (time) => time?.slice(0, 5);
+const servicePrice = (service) => Number(service.price_estimate ?? service.price ?? 0);
+const ACTIVE_BOOKING_STATUSES = ['pending', 'approved'];
+const BOOKING_SLOTS = [
+  '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00',
+];
+const isPastSlot = (date, time) => new Date(`${date}T${time}`) <= new Date();
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',   icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
-  approved:  { label: 'Approved',  icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
+  pending: { label: 'Pending', icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
+  approved: { label: 'Approved', icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
   completed: { label: 'Completed', icon: CheckCircle, cls: 'bg-blue-500/10 text-blue-400 border-blue-600/40' },
-  cancelled: { label: 'Cancelled', icon: XCircle,     cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
+  cancelled: { label: 'Cancelled', icon: XCircle, cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
 };
 
 /* ─── Book Appointment Modal ──────────────────────────────── */
 const BookModal = ({ services, onClose, onBooked }) => {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [maxPrice, setMaxPrice] = useState('');
   const [formData, setFormData] = useState({ date: '', time: '', concern: '' });
   const [loading, setLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [bookedSlots, setBookedSlots] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  const availableSlots = formData.date
+    ? BOOKING_SLOTS.filter((slot) => !bookedSlots.includes(slot) && !isPastSlot(formData.date, slot))
+    : [];
+
+  const categories = [...new Set(services.map((service) => service.category).filter(Boolean))].sort();
+  const filteredServices = services.filter((service) => {
+    const query = serviceSearch.trim().toLowerCase();
+    const matchesSearch = !query || [service.name, service.category, service.description]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(query));
+    const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter;
+    const matchesPrice = maxPrice === '' || servicePrice(service) <= Number(maxPrice);
+
+    return matchesSearch && matchesCategory && matchesPrice;
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchBookedSlots = async () => {
+      if (!formData.date) {
+        setBookedSlots([]);
+        return;
+      }
+
+      setSlotsLoading(true);
+      setError('');
+
+      try {
+        const { data, error: fetchErr } = await supabase
+          .from('appointments')
+          .select('appointment_time')
+          .eq('appointment_date', formData.date)
+          .in('status', ACTIVE_BOOKING_STATUSES);
+
+        if (fetchErr) throw fetchErr;
+        if (!active) return;
+
+        const taken = [...new Set((data || []).map((apt) => normalizeTime(apt.appointment_time)).filter(Boolean))];
+        setBookedSlots(taken);
+      } catch (err) {
+        if (active) setError(err.message || 'Failed to load available time slots.');
+      } finally {
+        if (active) setSlotsLoading(false);
+      }
+    };
+
+    fetchBookedSlots();
+
+    return () => {
+      active = false;
+    };
+  }, [formData.date]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.date || !formData.time) { setError('Date and time are required.'); return; }
+    if (!selectedService) { setError('Please select a service.'); return; }
+    if (!availableSlots.includes(formData.time)) { setError('That time slot is no longer available. Please choose another slot.'); return; }
     setLoading(true);
     setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      const { data: conflicts, error: conflictErr } = await supabase
+        .from('appointments')
+        .select('id, appointment_time')
+        .eq('appointment_date', formData.date)
+        .in('status', ACTIVE_BOOKING_STATUSES);
+
+      if (conflictErr) throw conflictErr;
+
+      const hasConflict = (conflicts || []).some((apt) => normalizeTime(apt.appointment_time) === formData.time);
+      if (hasConflict) {
+        setBookedSlots((prev) => [...new Set([...prev, formData.time])]);
+        setFormData((prev) => ({ ...prev, time: '' }));
+        setError('Someone just booked that time. Please choose another available slot.');
+        return;
+      }
+
       const { error: insertErr } = await supabase.from('appointments').insert([{
         customer_id: user.id,
         service_id: selectedService.id,
@@ -73,42 +163,78 @@ const BookModal = ({ services, onClose, onBooked }) => {
 
         <div className="p-6">
           {step === 1 && (
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              {services.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No services available yet.</p>
-              ) : (
-                services.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setSelectedService(s); setStep(2); }}
-                    className="w-full flex items-start gap-4 bg-gray-700/60 hover:bg-gray-700 border border-gray-600 hover:border-orange-500 rounded-xl px-5 py-4 text-left transition group"
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    placeholder="Search services..."
+                    className="w-full pl-9 pr-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-gray-700 border border-gray-600 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:border-orange-500 transition"
                   >
-                    <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-orange-600/30 transition">
-                      <Wrench size={18} className="text-orange-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold text-sm">{s.name}</p>
-                      {s.category && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Tag size={11} className="text-gray-500" />
-                          <span className="text-gray-500 text-xs">{s.category}</span>
-                        </div>
-                      )}
-                      {s.description && (
-                        <p className="text-gray-400 text-xs mt-1 line-clamp-2">{s.description}</p>
-                      )}
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      <p className="text-orange-400 font-bold text-sm">
-                        {formatPeso(s.price_estimate ?? s.price)}
-                      </p>
-                      {s.duration_minutes && (
-                        <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
-                      )}
-                    </div>
-                  </button>
-                ))
-              )}
+                    <option value="all">All Categories</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    placeholder="Max price"
+                    className="bg-gray-700 border border-gray-600 text-white px-4 py-2.5 rounded-xl placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-[48vh] overflow-y-auto pr-1">
+                {filteredServices.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No services match your filters.</p>
+                ) : (
+                  filteredServices.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => { setSelectedService(s); setStep(2); }}
+                      className="w-full flex items-start gap-4 bg-gray-700/60 hover:bg-gray-700 border border-gray-600 hover:border-orange-500 rounded-xl px-5 py-4 text-left transition group"
+                    >
+                      <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-orange-600/30 transition">
+                        <Wrench size={18} className="text-orange-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold text-sm">{s.name}</p>
+                        {s.category && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Tag size={11} className="text-gray-500" />
+                            <span className="text-gray-500 text-xs">{s.category}</span>
+                          </div>
+                        )}
+                        {s.description && (
+                          <p className="text-gray-400 text-xs mt-1 line-clamp-2">{s.description}</p>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-orange-400 font-bold text-sm">
+                          {formatPeso(s.price_estimate ?? s.price)}
+                        </p>
+                        {s.duration_minutes && (
+                          <p className="text-gray-500 text-xs">{s.duration_minutes} min</p>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -150,7 +276,7 @@ const BookModal = ({ services, onClose, onBooked }) => {
                       type="date"
                       min={today()}
                       value={formData.date}
-                      onChange={(e) => setFormData(p => ({ ...p, date: e.target.value }))}
+                      onChange={(e) => setFormData(p => ({ ...p, date: e.target.value, time: '' }))}
                       required
                       className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-orange-500 transition"
                     />
@@ -160,13 +286,43 @@ const BookModal = ({ services, onClose, onBooked }) => {
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       Preferred Time <span className="text-orange-500">*</span>
                     </label>
-                    <input
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => setFormData(p => ({ ...p, time: e.target.value }))}
-                      required
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-orange-500 transition"
-                    />
+                    {slotsLoading ? (
+                      <div className="flex items-center gap-2 px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-gray-300 text-sm">
+                        <Loader2 size={16} className="animate-spin text-orange-500" />
+                        Checking available slots...
+                      </div>
+                    ) : formData.date ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {BOOKING_SLOTS.map((slot) => {
+                          const unavailable = !availableSlots.includes(slot);
+                          const selected = formData.time === slot;
+
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={unavailable}
+                              onClick={() => setFormData(p => ({ ...p, time: slot }))}
+                              className={`px-3 py-2 rounded-lg border text-sm font-semibold transition ${selected
+                                  ? 'bg-orange-600 border-orange-500 text-white'
+                                  : unavailable
+                                    ? 'bg-gray-800 border-gray-700 text-gray-600 cursor-not-allowed'
+                                    : 'bg-gray-700 border-gray-600 text-gray-200 hover:border-orange-500 hover:text-white'
+                                }`}
+                            >
+                              {fmtTime(slot)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-gray-400 text-sm">
+                        Select a date to see available time slots.
+                      </div>
+                    )}
+                    {formData.date && !slotsLoading && availableSlots.length === 0 && (
+                      <p className="text-xs text-red-300 mt-2">No slots are available for this date.</p>
+                    )}
                   </div>
 
                   <div>
@@ -192,7 +348,7 @@ const BookModal = ({ services, onClose, onBooked }) => {
                     </button>
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || slotsLoading || !formData.time}
                       className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
                     >
                       {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}

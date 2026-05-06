@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { FiMenu, FiX, FiArrowRight } from 'react-icons/fi';
+import { FiArrowRight } from 'react-icons/fi';
 import bg from "/src/assets/pc.jpg";
 
 export const Hero = () => {

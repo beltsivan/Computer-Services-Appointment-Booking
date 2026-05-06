@@ -1,11 +1,18 @@
-import { BarChart3, Calendar, Users, Settings, LogOut, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
+import { createElement } from 'react';
+import { BarChart3, Calendar, ClipboardList, Users, Settings, LogOut, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../supabaseClient';
 
 export const Sidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiveTab, onMinimizeToggle }) => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    navigate('/Auth');
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const handleNavClick = (tab) => {
@@ -64,10 +71,17 @@ export const Sidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiveTab
             minimized={sidebarMinimized}
           />
           <NavItem 
-            icon={Calendar} 
+            icon={ClipboardList} 
             label={sidebarMinimized ? '' : 'Appointments'} 
             active={activeTab === 'appointments'} 
             onClick={() => handleNavClick('appointments')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
+            icon={Calendar} 
+            label={sidebarMinimized ? '' : 'Calendar'} 
+            active={activeTab === 'calendar'} 
+            onClick={() => handleNavClick('calendar')} 
             minimized={sidebarMinimized}
           />
           <NavItem 
@@ -101,7 +115,7 @@ export const Sidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiveTab
   );
 };
 
-const NavItem = ({ icon: Icon, label, active, onClick, minimized }) => (
+const NavItem = ({ icon, label, active, onClick, minimized }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition ${
@@ -110,7 +124,7 @@ const NavItem = ({ icon: Icon, label, active, onClick, minimized }) => (
         : 'text-gray-400 hover:bg-gray-700 hover:text-white'
     } ${minimized ? 'justify-center px-2' : ''}`}
   >
-    <Icon size={20} />
+    {createElement(icon, { size: 20 })}
     {!minimized && <span className="font-medium text-sm">{label}</span>}
   </button>
 );

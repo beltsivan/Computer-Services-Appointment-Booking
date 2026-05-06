@@ -20,12 +20,26 @@ const fmtTime = (t) => {
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 };
 
+const getFunctionErrorMessage = async (error) => {
+  if (!error) return 'Unknown email error.';
+
+  try {
+    const payload = await error.context?.json?.();
+    if (payload?.error) return payload.error;
+  } catch {
+    // The response body may already be consumed by Supabase internals.
+  }
+
+  return error.message || 'Unknown email error.';
+};
+
 export const ManageAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState({ type: '', text: '' });
   const [updatingId, setUpdatingId] = useState(null);
   const [scheduleModal, setScheduleModal] = useState(null); // appointment obj
   const [scheduleInput, setScheduleInput] = useState('');
@@ -37,6 +51,7 @@ export const ManageAppointments = () => {
     try {
       setLoading(true);
       setError('');
+      setNotice({ type: '', text: '' });
 
       // Fetch appointments + services
       const { data: aptData, error: aptErr } = await supabase
@@ -65,6 +80,9 @@ export const ManageAppointments = () => {
 
   const handleApprove = async (apt) => {
     setUpdatingId(apt.id);
+    setError('');
+    setNotice({ type: '', text: '' });
+
     try {
       const { error: upErr } = await supabase
         .from('appointments')
@@ -74,7 +92,24 @@ export const ManageAppointments = () => {
       setAppointments((prev) =>
         prev.map((a) => a.id === apt.id ? { ...a, status: 'approved' } : a)
       );
+
+      const { data: emailData, error: emailErr } = await supabase.functions.invoke('send-appointment-approved-email', {
+        body: { appointmentId: apt.id },
+      });
+
+      if (emailErr) {
+        const detail = await getFunctionErrorMessage(emailErr);
+        setNotice({
+          type: 'warning',
+          text: `Appointment approved, but the approval email was not sent: ${detail}`,
+        });
+        console.error('Approval email error:', emailErr);
+        return;
+      }
+
+      setNotice({ type: 'success', text: `Appointment approved and email sent to ${emailData?.recipient || apt.users?.email || 'the customer'}.` });
     } catch (e) {
+      setError(e.message || 'Failed to approve appointment.');
       console.error(e);
     } finally {
       setUpdatingId(null);
@@ -209,6 +244,16 @@ export const ManageAppointments = () => {
         </div>
       )}
 
+      {notice.text && (
+        <div className={`px-4 py-3 rounded-xl mb-6 text-sm border ${
+          notice.type === 'success'
+            ? 'bg-emerald-900/30 border-emerald-700 text-emerald-300'
+            : 'bg-yellow-900/30 border-yellow-700 text-yellow-300'
+        }`}>
+          {notice.text}
+        </div>
+      )}
+
       {/* Table / Cards */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 bg-gray-800 border border-gray-700 rounded-2xl">
@@ -223,7 +268,7 @@ export const ManageAppointments = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className={`space-y-4 ${filtered.length > 5 ? 'max-h-[42rem] overflow-y-auto pr-2' : ''}`}>
           {filtered.map((apt) => {
             const cfg = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pending;
             const StatusIcon = cfg.icon;

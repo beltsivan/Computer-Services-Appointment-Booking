@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import { Calendar, Clock, User, Settings, LogOut, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -18,13 +19,13 @@ export const UserSidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiv
     <>
       {/* Overlay backdrop for mobile when sidebar is open */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setActiveTab(activeTab)}
         />
       )}
-      
-      <aside 
+
+      <aside
         className={`fixed top-0 left-0 h-screen bg-gray-800 border-r border-gray-700 transition-transform duration-300 z-40 
           ${sidebarMinimized ? 'w-16' : 'w-64'}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -58,46 +59,46 @@ export const UserSidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiv
 
         {/* Navigation */}
         <nav className={`mt-4 space-y-2 ${sidebarMinimized ? 'px-2' : 'px-4'}`}>
-          <NavItem 
-            icon={Calendar} 
-            label={sidebarMinimized ? '' : 'Overview'} 
-            active={activeTab === 'overview'} 
-            onClick={() => setActiveTab('overview')} 
+          <NavItem
+            icon={Calendar}
+            label={sidebarMinimized ? '' : 'Overview'}
+            active={activeTab === 'overview'}
+            onClick={() => setActiveTab('overview')}
             minimized={sidebarMinimized}
           />
-          <NavItem 
-            icon={Calendar} 
-            label={sidebarMinimized ? '' : 'Calendar'} 
-            active={activeTab === 'calendar'} 
-            onClick={() => setActiveTab('calendar')} 
+          <NavItem
+            icon={Calendar}
+            label={sidebarMinimized ? '' : 'Calendar'}
+            active={activeTab === 'calendar'}
+            onClick={() => setActiveTab('calendar')}
             minimized={sidebarMinimized}
           />
-          <NavItem 
-            icon={Clock} 
-            label={sidebarMinimized ? '' : 'My Appointments'} 
-            active={activeTab === 'appointments'} 
-            onClick={() => setActiveTab('appointments')} 
+          <NavItem
+            icon={Clock}
+            label={sidebarMinimized ? '' : 'My Appointments'}
+            active={activeTab === 'appointments'}
+            onClick={() => setActiveTab('appointments')}
             minimized={sidebarMinimized}
           />
-          <NavItem 
-            icon={User} 
-            label={sidebarMinimized ? '' : 'Profile'} 
-            active={activeTab === 'profile'} 
-            onClick={() => setActiveTab('profile')} 
+          <NavItem
+            icon={User}
+            label={sidebarMinimized ? '' : 'Profile'}
+            active={activeTab === 'profile'}
+            onClick={() => setActiveTab('profile')}
             minimized={sidebarMinimized}
           />
-          <NavItem 
-            icon={Settings} 
-            label={sidebarMinimized ? '' : 'Settings'} 
-            active={activeTab === 'settings'} 
-            onClick={() => setActiveTab('settings')} 
+          <NavItem
+            icon={Settings}
+            label={sidebarMinimized ? '' : 'Settings'}
+            active={activeTab === 'settings'}
+            onClick={() => setActiveTab('settings')}
             minimized={sidebarMinimized}
           />
         </nav>
 
         {/* Logout Button */}
         <div className={`absolute bottom-6 ${sidebarMinimized ? 'left-2 right-2 w-auto' : 'left-4 w-[calc(100%-32px)]'}`}>
-          <button 
+          <button
             onClick={handleLogout}
             className={`w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition font-medium ${sidebarMinimized ? 'justify-center px-2' : ''}`}
           >
@@ -110,16 +111,15 @@ export const UserSidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiv
   );
 };
 
-const NavItem = ({ icon: Icon, label, active, onClick, minimized }) => (
+const NavItem = ({ icon, label, active, onClick, minimized }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition ${
-      active 
-        ? 'bg-orange-600 text-white' 
+    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition ${active
+        ? 'bg-orange-600 text-white'
         : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-    } ${minimized ? 'justify-center px-2' : ''}`}
+      } ${minimized ? 'justify-center px-2' : ''}`}
   >
-    <Icon size={20} />
+    {createElement(icon, { size: 20 })}
     {!minimized && <span className="font-medium text-sm">{label}</span>}
   </button>
 );

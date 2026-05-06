@@ -5,6 +5,7 @@ import { Table } from "./Table"
 import { Services } from "./Services"
 import { Clients } from "./Clients"
 import { ManageAppointments } from "./ManageAppointments"
+import { AdminCalendar } from "./AdminCalendar"
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, Save, X, BarChart3 } from 'lucide-react';
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -19,7 +20,6 @@ const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimum
 const STATUS_CONFIG = {
   pending:   { label: 'Pending',   icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
   approved: { label: 'Approved', icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
-  ready:    { label: 'Ready',    icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
   completed: { label: 'Completed', icon: CheckCircle, cls: 'bg-blue-500/10 text-blue-400 border-blue-600/40' },
   cancelled: { label: 'Cancelled', icon: X,     cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
 };
@@ -177,7 +177,7 @@ const ApprovedBookingsPanel = () => {
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className={`space-y-3 ${approvedBookings.length > 5 ? 'max-h-[36rem] overflow-y-auto pr-2' : ''}`}>
         {approvedBookings.map((apt) => {
           const StatusIcon = STATUS_CONFIG[apt.status].icon;
           const basePrice = apt.services?.[0]?.price_estimate ?? 0;
@@ -199,17 +199,6 @@ const ApprovedBookingsPanel = () => {
                 </div>
 
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => handleStatusChange(apt, 'ready')}
-                    disabled={isSaving(apt.id)}
-                    className={`px-2 py-1 rounded text-xs font-medium transition ${
-                      apt.status === 'ready'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-gray-700/50 text-gray-400 hover:bg-emerald-500/10 hover:text-emerald-400'
-                    }`}
-                  >
-                    Ready
-                  </button>
                   <button
                     onClick={() => handleStatusChange(apt, 'pending')}
                     disabled={isSaving(apt.id)}
@@ -397,7 +386,7 @@ const PendingBookingsPanel = () => {
     try {
       const { error: updateErr } = await supabase
         .from('appointments')
-        .update({ status: 'ready' })
+        .update({ status: 'completed' })
         .eq('id', apt.id);
       if (updateErr) throw updateErr;
       setPendingBookings(prev => prev.filter(a => a.id !== apt.id));
@@ -437,7 +426,7 @@ const PendingBookingsPanel = () => {
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className={`space-y-3 ${pendingBookings.length > 5 ? 'max-h-[36rem] overflow-y-auto pr-2' : ''}`}>
         {pendingBookings.map((apt) => {
           const basePrice = apt.services?.[0]?.price_estimate ?? 0;
           const totalPrice = apt.total_amount ?? basePrice;
@@ -479,7 +468,7 @@ const PendingBookingsPanel = () => {
   );
 };
 
-export const Main = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
+export const Main = ({ activeTab, sidebarMinimized }) => {
 return (
     <main
       className={
@@ -515,6 +504,17 @@ return (
             <div className="bg-gray-800 rounded-xl md:rounded-2xl border border-gray-700 p-4 md:p-6 w-full">
               <Services />
             </div>
+          </div>
+        )}
+
+        {/* Clients */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6 md:space-y-8">
+            <div>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 text-white">Appointment Calendar</h2>
+              <p className="text-gray-400 text-sm md:text-base">All pending and approved customer schedules</p>
+            </div>
+            <AdminCalendar />
           </div>
         )}
 
