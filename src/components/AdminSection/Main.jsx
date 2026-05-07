@@ -5,6 +5,7 @@ import { Table } from "./Table"
 import { Services } from "./Services"
 import { Clients } from "./Clients"
 import { ManageAppointments } from "./ManageAppointments"
+import { AdminCalendar } from "./AdminCalendar"
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, Save, X, BarChart3 } from 'lucide-react';
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -515,6 +516,17 @@ return (
             <div className="bg-gray-800 rounded-xl md:rounded-2xl border border-gray-700 p-4 md:p-6 w-full">
               <Services />
             </div>
+          </div>
+        )}
+
+        {/* Calendar */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6 md:space-y-8">
+            <div className="mb-6 md:mb-8">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 text-white">Calendar</h2>
+              <p className="text-gray-400 text-sm md:text-base">View all appointments by date — pending, approved, and completed</p>
+            </div>
+            <AdminCalendar />
           </div>
         )}
 

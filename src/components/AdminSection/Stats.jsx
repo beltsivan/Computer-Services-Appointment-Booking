@@ -18,12 +18,12 @@ export const Stats = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch total appointments count
       const { count: totalAppointments, error: aptError } = await supabase
         .from('appointments')
         .select('*', { count: 'exact', head: true });
-      
+
       if (aptError) throw aptError;
 
       // Fetch active clients count (role = 'customer')
@@ -31,7 +31,7 @@ export const Stats = () => {
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'customer');
-      
+
       if (clientError) throw clientError;
 
       // Fetch pending appointments count
@@ -39,7 +39,7 @@ export const Stats = () => {
         .from('appointments')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
-      
+
       if (pendingError) throw pendingError;
 
       // Fetch completed appointments to calculate revenue
@@ -47,7 +47,7 @@ export const Stats = () => {
         .from('appointments')
         .select('id, services!appointments_service_id_fkey ( price_estimate )')
         .eq('status', 'completed');
-      
+
       if (completedError) throw completedError;
 
       // Calculate total revenue
@@ -109,8 +109,8 @@ export const Stats = () => {
       {statsData.map((stat, id) => {
         const Icon = stat.icon;
         return (
-          <div 
-            key={id} 
+          <div
+            key={id}
             className="bg-gray-800 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-orange-500 transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-center justify-between">

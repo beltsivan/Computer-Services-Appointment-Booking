@@ -1,4 +1,4 @@
-import { BarChart3, Calendar, Users, Settings, LogOut, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Calendar, CalendarDays, Users, Settings, LogOut, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const Sidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiveTab, onMinimizeToggle }) => {
@@ -68,6 +68,13 @@ export const Sidebar = ({ sidebarOpen, sidebarMinimized, activeTab, setActiveTab
             label={sidebarMinimized ? '' : 'Appointments'} 
             active={activeTab === 'appointments'} 
             onClick={() => handleNavClick('appointments')} 
+            minimized={sidebarMinimized}
+          />
+          <NavItem 
+            icon={CalendarDays} 
+            label={sidebarMinimized ? '' : 'Calendar'} 
+            active={activeTab === 'calendar'} 
+            onClick={() => handleNavClick('calendar')} 
             minimized={sidebarMinimized}
           />
           <NavItem 

@@ -18,10 +18,47 @@ const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimum
 const today = () => new Date().toISOString().split('T')[0];
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',   icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
-  approved:  { label: 'Approved',  icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
+  pending: { label: 'Pending', icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
+  approved: { label: 'Approved', icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
   completed: { label: 'Completed', icon: CheckCircle, cls: 'bg-blue-500/10 text-blue-400 border-blue-600/40' },
-  cancelled: { label: 'Cancelled', icon: XCircle,     cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
+  cancelled: { label: 'Cancelled', icon: XCircle, cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
+};
+
+/* ─── Time‑slot helpers ───────────────────────────────────── */
+const SLOT_GAP_MINUTES = 60; // minimum gap between bookings
+
+/** Convert "HH:MM" → total minutes since midnight */
+const timeToMinutes = (t) => {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/** Check if `candidateTime` (HH:MM) conflicts with any existing appointment on that day */
+const hasTimeConflict = (candidateTime, bookedTimes) => {
+  const candidateMin = timeToMinutes(candidateTime);
+  if (candidateMin === null) return false;
+  return bookedTimes.some((bt) => {
+    const bookedMin = timeToMinutes(bt);
+    if (bookedMin === null) return false;
+    return Math.abs(candidateMin - bookedMin) < SLOT_GAP_MINUTES;
+  });
+};
+
+/** Return the blocked window label around a booked time */
+const blockedWindow = (bookedTime) => {
+  const mins = timeToMinutes(bookedTime);
+  if (mins === null) return '';
+  const from = Math.max(0, mins - SLOT_GAP_MINUTES + 1);
+  const to = Math.min(24 * 60 - 1, mins + SLOT_GAP_MINUTES - 1);
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (m) => {
+    const hr = Math.floor(m / 60);
+    const mn = m % 60;
+    const h12 = hr > 12 ? hr - 12 : hr || 12;
+    return `${h12}:${pad(mn)} ${hr >= 12 ? 'PM' : 'AM'}`;
+  };
+  return `${fmt(from)} – ${fmt(to)}`;
 };
 
 /* ─── Book Appointment Modal ──────────────────────────────── */
@@ -33,14 +70,79 @@ const BookModal = ({ services, onClose, onBooked }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Booked‑slot awareness
+  const [bookedSlots, setBookedSlots] = useState([]);   // existing appointment_time values
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [timeWarning, setTimeWarning] = useState('');
+
+  /** Fetch existing bookings for the selected date (pending + approved only) */
+  const fetchBookedSlots = async (date) => {
+    if (!date) { setBookedSlots([]); return; }
+    try {
+      setLoadingSlots(true);
+      const { data, error: fetchErr } = await supabase
+        .from('appointments')
+        .select('appointment_time')
+        .eq('appointment_date', date)
+        .in('status', ['pending', 'approved']);
+      if (fetchErr) throw fetchErr;
+      setBookedSlots((data || []).map((r) => r.appointment_time).filter(Boolean));
+    } catch (err) {
+      console.error('Error fetching booked slots:', err);
+      setBookedSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  /** Called when the user picks a date */
+  const handleDateChange = (date) => {
+    setFormData((p) => ({ ...p, date, time: '' }));
+    setTimeWarning('');
+    setError('');
+    fetchBookedSlots(date);
+  };
+
+  /** Called when the user picks a time */
+  const handleTimeChange = (time) => {
+    setFormData((p) => ({ ...p, time }));
+    if (hasTimeConflict(time, bookedSlots)) {
+      setTimeWarning('This time is too close to an existing booking. Please choose a time at least 1 hour apart from booked slots.');
+    } else {
+      setTimeWarning('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.date || !formData.time) { setError('Date and time are required.'); return; }
+
+    // Final conflict check before submitting
+    if (hasTimeConflict(formData.time, bookedSlots)) {
+      setError('The selected time conflicts with an existing booking. Each appointment requires a 1‑hour gap. Please pick a different time.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      // Double‑check on the server side right before insert
+      const { data: latestSlots } = await supabase
+        .from('appointments')
+        .select('appointment_time')
+        .eq('appointment_date', formData.date)
+        .in('status', ['pending', 'approved']);
+      const latestTimes = (latestSlots || []).map((r) => r.appointment_time).filter(Boolean);
+      if (hasTimeConflict(formData.time, latestTimes)) {
+        setError('Someone just booked a nearby time slot. Please choose a different time.');
+        setBookedSlots(latestTimes);
+        setLoading(false);
+        return;
+      }
+
       const { error: insertErr } = await supabase.from('appointments').insert([{
         customer_id: user.id,
         service_id: selectedService.id,
@@ -150,11 +252,49 @@ const BookModal = ({ services, onClose, onBooked }) => {
                       type="date"
                       min={today()}
                       value={formData.date}
-                      onChange={(e) => setFormData(p => ({ ...p, date: e.target.value }))}
+                      onChange={(e) => handleDateChange(e.target.value)}
                       required
                       className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-orange-500 transition"
                     />
                   </div>
+
+                  {/* Booked slots indicator — shown after a date is selected */}
+                  {formData.date && (
+                    <div className="rounded-xl border border-gray-700 bg-gray-900/50 px-4 py-3">
+                      {loadingSlots ? (
+                        <div className="flex items-center gap-2 text-gray-400 text-xs">
+                          <Loader2 size={14} className="animate-spin" /> Checking availability…
+                        </div>
+                      ) : bookedSlots.length === 0 ? (
+                        <p className="text-emerald-400 text-xs font-medium flex items-center gap-1.5">
+                          <CheckCircle size={13} /> All time slots are available for this date.
+                        </p>
+                      ) : (
+                        <div>
+                          <p className="text-yellow-400 text-xs font-semibold mb-2 flex items-center gap-1.5">
+                            <AlertCircle size={13} /> {bookedSlots.length} booking{bookedSlots.length > 1 ? 's' : ''} on this date — unavailable windows:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {bookedSlots
+                              .slice()
+                              .sort((a, b) => timeToMinutes(a) - timeToMinutes(b))
+                              .map((t, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 border border-red-600/30 px-2.5 py-1 rounded-lg text-[11px] font-semibold"
+                                >
+                                  <Clock size={11} />
+                                  {blockedWindow(t)}
+                                </span>
+                              ))}
+                          </div>
+                          <p className="text-gray-500 text-[10px] mt-2">
+                            Choose a time at least 1 hour before or after each booked slot.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -163,10 +303,16 @@ const BookModal = ({ services, onClose, onBooked }) => {
                     <input
                       type="time"
                       value={formData.time}
-                      onChange={(e) => setFormData(p => ({ ...p, time: e.target.value }))}
+                      onChange={(e) => handleTimeChange(e.target.value)}
                       required
-                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:outline-none focus:border-orange-500 transition"
+                      className={`w-full px-4 py-2.5 bg-gray-700 border rounded-xl text-white focus:outline-none transition ${timeWarning ? 'border-red-500 focus:border-red-400' : 'border-gray-600 focus:border-orange-500'
+                        }`}
                     />
+                    {timeWarning && (
+                      <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                        <AlertCircle size={12} /> {timeWarning}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -192,7 +338,7 @@ const BookModal = ({ services, onClose, onBooked }) => {
                     </button>
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || !!timeWarning}
                       className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2"
                     >
                       {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
@@ -231,7 +377,7 @@ export const AppointmentsList = ({ fullView = false }) => {
       const [aptRes, svcRes] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, appointment_date, appointment_time, concern_description, status, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes )')
+          .select('id, appointment_date, appointment_time, concern_description, status, total_amount, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes )')
           .eq('customer_id', user.id)
           .order('appointment_date', { ascending: false }),
         supabase
@@ -364,11 +510,16 @@ export const AppointmentsList = ({ fullView = false }) => {
                         Awaiting admin approval
                       </p>
                     )}
-                    {apt.status === 'approved' && (
-                      <p className="text-emerald-400/80 text-xs mt-3 flex items-center gap-1.5">
-                        <CheckCircle size={12} />
-                        Your appointment is confirmed!
-                      </p>
+                    {apt.status === 'completed' && (
+                      <div className="mt-3 space-y-2">
+                        {apt.total_amount != null && apt.total_amount > 0 && (
+                          <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-600/30 rounded-xl px-4 py-2.5">
+                            <span className="text-gray-400 text-xs">Total to Pay:</span>
+                            <span className="text-emerald-400 font-bold text-lg">{formatPeso(apt.total_amount)}</span>
+
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

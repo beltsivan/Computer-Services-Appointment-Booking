@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
-import { ChevronLeft, ChevronRight, Loader2, Calendar, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Calendar, Clock, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
@@ -25,6 +25,14 @@ const STATUS_COLORS = {
     label: 'Approved',
     icon: CheckCircle,
   },
+  completed: {
+    dot: 'bg-blue-400',
+    bg: 'bg-blue-500/15',
+    text: 'text-blue-400',
+    border: 'border-blue-500/30',
+    label: 'Completed',
+    icon: CheckCircle,
+  },
 };
 
 const formatTime = (time) => {
@@ -34,6 +42,8 @@ const formatTime = (time) => {
   return `${hour > 12 ? hour - 12 : hour || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
 };
 
+const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
 // Helper to safely get service name from either object or array format
 const getServiceName = (services) => {
   if (!services) return 'Service';
@@ -41,12 +51,19 @@ const getServiceName = (services) => {
   return services.name || 'Service';
 };
 
-export const UserCalendar = () => {
+const getServicePrice = (services) => {
+  if (!services) return 0;
+  if (Array.isArray(services)) return services[0]?.price_estimate ?? 0;
+  return services.price_estimate ?? 0;
+};
+
+export const AdminCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     fetchAppointments();
@@ -56,18 +73,34 @@ export const UserCalendar = () => {
     try {
       setLoading(true);
       setError('');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       const { data, error: fetchErr } = await supabase
         .from('appointments')
-        .select('id, appointment_date, appointment_time, status, concern_description, services!appointments_service_id_fkey ( name, price_estimate )')
-        .eq('customer_id', user.id)
-        .in('status', ['pending', 'approved'])
+        .select('id, appointment_date, appointment_time, status, concern_description, total_amount, customer_id, services!appointments_service_id_fkey ( name, price_estimate )')
+        .in('status', ['pending', 'approved', 'completed'])
         .order('appointment_date', { ascending: true });
 
       if (fetchErr) throw fetchErr;
-      setAppointments(data || []);
+
+      // Also fetch customer info
+      const customerIds = [...new Set((data || []).map(a => a.customer_id).filter(Boolean))];
+      let usersMap = {};
+
+      if (customerIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, email')
+          .in('id', customerIds);
+
+        usersMap = Object.fromEntries((usersData || []).map(u => [u.id, u]));
+      }
+
+      const merged = (data || []).map(a => ({
+        ...a,
+        customer: usersMap[a.customer_id] || null,
+      }));
+
+      setAppointments(merged);
     } catch (err) {
       console.error('Error fetching appointments:', err);
       setError('Failed to load calendar data.');
@@ -76,20 +109,24 @@ export const UserCalendar = () => {
     }
   };
 
-  // Group appointments by date
+  // Filtered appointments
+  const filteredAppointments = useMemo(() => {
+    if (filterStatus === 'all') return appointments;
+    return appointments.filter((a) => a.status === filterStatus);
+  }, [appointments, filterStatus]);
+
+  // Group by date
   const appointmentsByDate = useMemo(() => {
     const grouped = {};
-    appointments.forEach((apt) => {
+    filteredAppointments.forEach((apt) => {
       const dateKey = apt.appointment_date;
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = [];
-      }
+      if (!grouped[dateKey]) grouped[dateKey] = [];
       grouped[dateKey].push(apt);
     });
     return grouped;
-  }, [appointments]);
+  }, [filteredAppointments]);
 
-  // Get calendar grid for current month
+  // Calendar grid
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -99,12 +136,8 @@ export const UserCalendar = () => {
     const startDayOfWeek = firstDay.getDay();
 
     const days = [];
-    for (let i = 0; i < startDayOfWeek; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
+    for (let i = 0; i < startDayOfWeek; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
     return days;
   }, [currentDate]);
 
@@ -120,15 +153,8 @@ export const UserCalendar = () => {
     return `${year}-${m}-${d}`;
   };
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-    setSelectedDate(null);
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-    setSelectedDate(null);
-  };
+  const handlePrevMonth = () => { setCurrentDate(new Date(year, month - 1, 1)); setSelectedDate(null); };
+  const handleNextMonth = () => { setCurrentDate(new Date(year, month + 1, 1)); setSelectedDate(null); };
 
   const handleDayClick = (day) => {
     if (!day) return;
@@ -136,16 +162,28 @@ export const UserCalendar = () => {
     setSelectedDate(selectedDate === dateKey ? null : dateKey);
   };
 
-  // Count statuses for a given day
   const getStatusCounts = (day) => {
     const dateKey = formatDateKey(day);
     const apts = appointmentsByDate[dateKey] || [];
-    const counts = { pending: 0, approved: 0 };
+    const counts = { pending: 0, approved: 0, completed: 0 };
     apts.forEach((a) => {
       if (counts[a.status] !== undefined) counts[a.status]++;
     });
     return counts;
   };
+
+  // Monthly summary
+  const monthlySummary = useMemo(() => {
+    const summary = { pending: 0, approved: 0, completed: 0, total: 0 };
+    filteredAppointments.forEach((apt) => {
+      const aptDate = new Date(apt.appointment_date);
+      if (aptDate.getFullYear() === year && aptDate.getMonth() === month) {
+        if (summary[apt.status] !== undefined) summary[apt.status]++;
+        summary.total++;
+      }
+    });
+    return summary;
+  }, [filteredAppointments, year, month]);
 
   if (loading) {
     return (
@@ -169,25 +207,91 @@ export const UserCalendar = () => {
 
   return (
     <div className="space-y-6">
+      {/* Monthly Summary Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-white">{monthlySummary.total}</p>
+          <p className="text-xs text-gray-400 mt-1">Total This Month</p>
+        </div>
+        <div className="bg-gray-800 border border-yellow-500/20 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-yellow-400">{monthlySummary.pending}</p>
+          <p className="text-xs text-gray-400 mt-1">Pending</p>
+        </div>
+        <div className="bg-gray-800 border border-emerald-500/20 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-emerald-400">{monthlySummary.approved}</p>
+          <p className="text-xs text-gray-400 mt-1">Approved</p>
+        </div>
+        <div className="bg-gray-800 border border-blue-500/20 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-blue-400">{monthlySummary.completed}</p>
+          <p className="text-xs text-gray-400 mt-1">Completed</p>
+        </div>
+      </div>
+
       <div className="bg-gray-800 border border-gray-700 rounded-2xl p-4 md:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h2 className="text-xl md:text-2xl font-bold text-white">
             {MONTHS[month]} {year}
           </h2>
-          <div className="flex gap-2">
-            <button
-              onClick={handlePrevMonth}
-              className="w-9 h-9 md:w-10 md:h-10 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition"
+          <div className="flex items-center gap-3">
+            {/* Filter Pills */}
+            <div className="hidden sm:flex bg-gray-900 rounded-lg p-1 gap-1">
+              {[
+                { key: 'all', label: 'All', activeClass: 'text-gray-300' },
+                { key: 'pending', label: 'Pending', activeClass: 'text-yellow-400' },
+                { key: 'approved', label: 'Approved', activeClass: 'text-emerald-400' },
+                { key: 'completed', label: 'Completed', activeClass: 'text-blue-400' },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilterStatus(f.key)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                    filterStatus === f.key
+                      ? 'bg-gray-700 ' + f.activeClass
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile filter dropdown */}
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="sm:hidden bg-gray-700 border border-gray-600 text-white px-3 py-1.5 rounded-lg text-xs focus:outline-none"
             >
-              <ChevronLeft size={20} />
-            </button>
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="completed">Completed</option>
+            </select>
+
+            {/* Refresh */}
             <button
-              onClick={handleNextMonth}
+              onClick={fetchAppointments}
               className="w-9 h-9 md:w-10 md:h-10 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition"
+              title="Refresh"
             >
-              <ChevronRight size={20} />
+              <RefreshCw size={16} />
             </button>
+
+            {/* Nav Arrows */}
+            <div className="flex gap-1">
+              <button
+                onClick={handlePrevMonth}
+                className="w-9 h-9 md:w-10 md:h-10 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button
+                onClick={handleNextMonth}
+                className="w-9 h-9 md:w-10 md:h-10 bg-gray-700 hover:bg-gray-600 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -208,16 +312,16 @@ export const UserCalendar = () => {
             const dateKey = formatDateKey(day);
             const isCurrentDay = dateKey === todayKey;
             const isSelected = selectedDate === dateKey;
-            const counts = day ? getStatusCounts(day) : { pending: 0, approved: 0 };
-            const hasAny = counts.pending > 0 || counts.approved > 0;
+            const counts = day ? getStatusCounts(day) : { pending: 0, approved: 0, completed: 0 };
+            const hasAny = counts.pending > 0 || counts.approved > 0 || counts.completed > 0;
 
             return (
               <div
                 key={index}
                 onClick={() => handleDayClick(day)}
                 className={`
-                  relative min-h-[60px] md:min-h-[80px] flex flex-col items-center p-1
-                  rounded-xl transition-all duration-150 
+                  relative min-h-[60px] md:min-h-[85px] flex flex-col items-center p-1
+                  rounded-xl transition-all duration-150
                   ${day ? 'cursor-pointer hover:bg-gray-700/50' : ''}
                   ${isCurrentDay ? 'bg-orange-600/20 ring-2 ring-orange-500/60' : ''}
                   ${isSelected && !isCurrentDay ? 'bg-gray-700 ring-2 ring-orange-400/50' : ''}
@@ -232,14 +336,14 @@ export const UserCalendar = () => {
                       {day}
                     </span>
 
-                    {/* Status count badges inside cell */}
+                    {/* Status count badges */}
                     {hasAny && (
                       <div className="flex flex-col gap-[2px] w-full mt-auto">
                         {counts.pending > 0 && (
                           <div className="flex items-center gap-0.5 bg-yellow-500/20 rounded px-1 py-[2px]">
                             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" />
                             <span className="text-[8px] md:text-[10px] font-bold text-yellow-400 leading-tight truncate">
-                              {counts.pending} <span className="hidden md:inline">Pending</span>
+                              {counts.pending} <span className="hidden md:inline">Pend</span>
                             </span>
                           </div>
                         )}
@@ -247,7 +351,15 @@ export const UserCalendar = () => {
                           <div className="flex items-center gap-0.5 bg-emerald-500/20 rounded px-1 py-[2px]">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                             <span className="text-[8px] md:text-[10px] font-bold text-emerald-400 leading-tight truncate">
-                              {counts.approved} <span className="hidden md:inline">Approved</span>
+                              {counts.approved} <span className="hidden md:inline">Appr</span>
+                            </span>
+                          </div>
+                        )}
+                        {counts.completed > 0 && (
+                          <div className="flex items-center gap-0.5 bg-blue-500/20 rounded px-1 py-[2px]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                            <span className="text-[8px] md:text-[10px] font-bold text-blue-400 leading-tight truncate">
+                              {counts.completed} <span className="hidden md:inline">Done</span>
                             </span>
                           </div>
                         )}
@@ -270,6 +382,10 @@ export const UserCalendar = () => {
             <span className="w-3 h-3 rounded-full bg-emerald-400" />
             <span className="text-gray-400 text-xs md:text-sm">Approved</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-blue-400" />
+            <span className="text-gray-400 text-xs md:text-sm">Completed</span>
+          </div>
           <div className="flex items-center gap-2 ml-auto">
             <span className="w-3 h-3 rounded bg-orange-600/30 ring-1 ring-orange-500" />
             <span className="text-gray-400 text-xs md:text-sm">Today</span>
@@ -290,12 +406,17 @@ export const UserCalendar = () => {
                 year: 'numeric',
               })}
             </h3>
-            <button
-              onClick={() => setSelectedDate(null)}
-              className="text-gray-500 hover:text-white text-xs transition"
-            >
-              Close
-            </button>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">
+                {selectedAppointments.length} appointment{selectedAppointments.length !== 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="text-gray-500 hover:text-white text-xs transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           {selectedAppointments.length === 0 ? (
@@ -305,11 +426,12 @@ export const UserCalendar = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Quick summary */}
-              <div className="flex gap-3 mb-2">
+              {/* Quick summary badges */}
+              <div className="flex flex-wrap gap-2 mb-2">
                 {(() => {
                   const pc = selectedAppointments.filter(a => a.status === 'pending').length;
                   const ac = selectedAppointments.filter(a => a.status === 'approved').length;
+                  const cc = selectedAppointments.filter(a => a.status === 'completed').length;
                   return (
                     <>
                       {pc > 0 && (
@@ -322,6 +444,11 @@ export const UserCalendar = () => {
                           <CheckCircle size={12} /> {ac} Approved
                         </span>
                       )}
+                      {cc > 0 && (
+                        <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-xs font-semibold">
+                          <CheckCircle size={12} /> {cc} Completed
+                        </span>
+                      )}
                     </>
                   );
                 })()}
@@ -330,21 +457,34 @@ export const UserCalendar = () => {
               {selectedAppointments.map((apt) => {
                 const cfg = STATUS_COLORS[apt.status] || STATUS_COLORS.pending;
                 const StatusIcon = cfg.icon;
+                const price = apt.total_amount ?? getServicePrice(apt.services);
+                const customerName = apt.customer
+                  ? `${apt.customer.first_name || ''} ${apt.customer.last_name || ''}`.trim() || apt.customer.email
+                  : 'Unknown';
+
                 return (
                   <div
                     key={apt.id}
                     className={`flex items-center gap-3 md:gap-4 bg-gray-900/60 rounded-xl p-3 md:p-4 border ${cfg.border} transition hover:bg-gray-900/80`}
                   >
-                    <div className={`w-1.5 h-12 rounded-full ${cfg.dot} flex-shrink-0`} />
+                    <div className={`w-1.5 h-14 rounded-full ${cfg.dot} flex-shrink-0`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold text-sm truncate">
                         {getServiceName(apt.services)}
+                      </p>
+                      <p className="text-gray-400 text-xs mt-0.5 truncate">
+                        Client: {customerName}
                       </p>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-gray-500 text-xs flex items-center gap-1">
                           <Clock size={11} />
                           {apt.appointment_time ? formatTime(apt.appointment_time) : 'No time set'}
                         </span>
+                        {price > 0 && (
+                          <span className="text-emerald-400 font-bold text-xs">
+                            {formatPeso(price)}
+                          </span>
+                        )}
                       </div>
                       {apt.concern_description && (
                         <p className="text-gray-500 text-xs mt-1 italic truncate">{apt.concern_description}</p>
@@ -365,4 +505,4 @@ export const UserCalendar = () => {
   );
 };
 
-export default UserCalendar;
+export default AdminCalendar;
