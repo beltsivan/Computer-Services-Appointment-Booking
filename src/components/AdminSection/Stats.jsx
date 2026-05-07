@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Calendar, Users, BarChart3, Settings, Loader2 } from 'lucide-react';
+import { Calendar, Users, BarChart3, Clock } from 'lucide-react';
 
 export const Stats = () => {
   const [stats, setStats] = useState({
     totalAppointments: 0,
     activeClients: 0,
-    revenue: 0,
-    pendingTasks: 0
+    pendingTasks: 0,
+    completedAppointments: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -42,25 +42,19 @@ export const Stats = () => {
 
       if (pendingError) throw pendingError;
 
-      // Fetch completed appointments to calculate revenue
-      const { data: completedAppointments, error: completedError } = await supabase
+      const { count: completedAppointments, error: completedError } = await supabase
         .from('appointments')
-        .select('id, services!appointments_service_id_fkey ( price_estimate )')
+        .select('*', { count: 'exact', head: true })
         .eq('status', 'completed');
 
       if (completedError) throw completedError;
 
-      // Calculate total revenue
-      const revenue = completedAppointments?.reduce((sum, apt) => {
-        const price = apt.services?.[0]?.price_estimate || 0;
-        return sum + Number(price);
-      }, 0) || 0;
 
       setStats({
         totalAppointments: totalAppointments || 0,
         activeClients: activeClients || 0,
-        revenue: revenue,
-        pendingTasks: pendingTasks || 0
+        pendingTasks: pendingTasks || 0,
+        completedAppointments: completedAppointments || 0,
       });
 
     } catch (err) {
@@ -70,20 +64,11 @@ export const Stats = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
   const statsData = [
-    { label: 'Total Appointments', value: stats.totalAppointments, icon: Calendar, color: 'bg-blue-500' },
-    { label: 'Active Clients', value: stats.activeClients, icon: Users, color: 'bg-green-500' },
-    { label: 'Revenue', value: formatCurrency(stats.revenue), icon: BarChart3, color: 'bg-orange-500' },
-    { label: 'Pending Tasks', value: stats.pendingTasks, icon: Settings, color: 'bg-purple-500' },
+    { label: 'Total Appointments', value: stats.totalAppointments, icon: Calendar, color: 'from-blue-500 to-blue-700' },
+    { label: 'Active Clients', value: stats.activeClients, icon: Users, color: 'from-emerald-500 to-emerald-700' },
+    { label: 'Pending Tasks', value: stats.pendingTasks, icon: Clock, color: 'from-yellow-500 to-orange-600' },
+    { label: 'Completed', value: stats.completedAppointments, icon: BarChart3, color: 'from-gray-500 to-gray-900' },
   ];
 
   if (loading) {
@@ -111,16 +96,23 @@ export const Stats = () => {
         return (
           <div
             key={id}
-            className="bg-gray-800 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-orange-500 transition-all duration-300 group cursor-pointer"
+            className="relative overflow-hidden bg-gray-800 rounded-xl p-4 md:p-6 border border-gray-700 hover:border-orange-500/70 transition-all duration-300 group"
           >
-            <div className="flex items-center justify-between">
+            <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.color}`} />
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="text-gray-400 text-xs md:text-sm font-medium truncate">{stat.label}</p>
                 <p className="text-2xl md:text-3xl font-bold mt-1 text-white">{stat.value}</p>
               </div>
-              <div className={`${stat.color} p-2 md:p-3 rounded-lg flex-shrink-0 ml-3`}>
+              <div className={`bg-gradient-to-br ${stat.color} p-2 md:p-3 rounded-xl flex-shrink-0 shadow-lg shadow-black/20`}>
                 <Icon size={20} className="text-white" />
               </div>
+            </div>
+            <div className="mt-4 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full bg-gradient-to-r ${stat.color} rounded-full`}
+                style={{ width: `${Math.min((Number(stat.value) / Math.max(stats.totalAppointments, 1)) * 100, 100)}%` }}
+              />
             </div>
           </div>
         );

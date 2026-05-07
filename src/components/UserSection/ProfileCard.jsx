@@ -4,9 +4,12 @@ import { supabase } from '../../supabaseClient';
 
 const profileFromUser = (user) => {
   const metadata = user?.user_metadata || {};
+  const fullName = metadata.full_name || metadata.fullName || metadata.display_name || metadata.displayName || metadata.name || '';
+  const [fallbackFirstName = '', fallbackLastName = ''] = fullName.trim().split(/\s+/, 2);
+
   return {
-    firstName: metadata.firstName || metadata.first_name || '',
-    lastName: metadata.lastName || metadata.last_name || '',
+    firstName: metadata.firstName || metadata.first_name || fallbackFirstName || '',
+    lastName: metadata.lastName || metadata.last_name || fallbackLastName || '',
     phone: metadata.phone || '',
     address: metadata.address || '',
     city: metadata.city || '',

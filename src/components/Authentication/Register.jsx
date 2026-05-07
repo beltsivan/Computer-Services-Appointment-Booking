@@ -60,6 +60,20 @@ export const Register = () => {
       }
 
       if (data.user) {
+        const { error: profileError } = await supabase
+          .from('users')
+          .upsert({
+            id: data.user.id,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: 'customer',
+          }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.error('Error saving customer profile:', profileError);
+        }
+
         alert('Signup successful! Please check your email to confirm your account.');
         setFormData({
           firstName: '',

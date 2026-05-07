@@ -32,14 +32,30 @@ export const Clients = () => {
     }
   };
 
-  const getFullName = (client) => {
-    const fromParts = `${client.first_name ?? client.firstName ?? ''} ${client.last_name ?? client.lastName ?? ''}`.trim();
-    return fromParts || client.full_name?.trim() || client.name?.trim() || '';
+  const normalizeValue = (value) => (typeof value === 'string' ? value.trim() : value || '');
+
+  const getProfileValue = (client, keys) => {
+    const metadataSources = [client, client?.user_metadata, client?.raw_user_meta_data, client?.metadata];
+
+    for (const source of metadataSources) {
+      for (const key of keys) {
+        const value = normalizeValue(source?.[key]);
+        if (value) return value;
+      }
+    }
+
+    return '';
+  };
+
+  const getFirstName = (client) => {
+    const firstName = getProfileValue(client, ['first_name', 'firstName', 'firstname', 'fname', 'given_name']);
+    const fullName = getProfileValue(client, ['full_name', 'fullName', 'display_name', 'displayName', 'name']);
+    return firstName || fullName.split(' ')[0] || 'Name not available';
   };
 
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
-    const full = `${getFullName(c)} ${c.email ?? ''}`.toLowerCase();
+    const full = `${getFirstName(c)} ${c.email ?? ''}`.toLowerCase();
     return full.includes(q);
   });
 
@@ -131,7 +147,7 @@ export const Clients = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((client) => {
-            const fullName = getFullName(client);
+            const firstName = getFirstName(client);
 
             return (
               <div
@@ -143,11 +159,11 @@ export const Clients = () => {
                   <div
                     className={`w-14 h-14 rounded-full bg-gradient-to-br ${getColor(client.id)} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
                   >
-                    {getInitials(fullName)}
+                    {getInitials(firstName)}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-white font-bold text-base truncate">
-                      {fullName || `Not set`}
+                      {client.email}
                     </h3>
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 mt-0.5">
                       <ShieldCheck size={12} />

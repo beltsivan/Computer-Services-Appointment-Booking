@@ -1,7 +1,8 @@
+import { UserCircle } from "lucide-react";
 export const UserTopbar = ({ sidebarMinimized }) => {
 
   return (
-    <header 
+    <header
       className={`
         bg-gray-800 border-b border-gray-700 fixed top-0 z-20
         transition-all duration-300
@@ -11,8 +12,8 @@ export const UserTopbar = ({ sidebarMinimized }) => {
     >
       <div className="flex items-center justify-end h-full px-4">
         {/* User Avatar - always visible on right */}
-        <div className="w-9 h-9 bg-orange-600 rounded-full flex items-center justify-center font-bold text-white text-sm cursor-pointer hover:bg-orange-700 transition">
-          U
+        <div className="w-9 h-9  rounded-full flex items-center justify-center font-bold text-white text-sm cursor-pointer hover:bg-gray-700 transition">
+          <UserCircle className="w-10 h-10 text-orange-500" />
         </div>
       </div>
     </header>

@@ -8,6 +8,23 @@ import { ProfileSettings } from './ProfileSettings';
 import { UserCalendar } from './UserCalendar';
 import { Calendar, Clock, CheckCircle } from 'lucide-react';
 
+const getStatsFromAppointments = (appointments) => ({
+  upcomingAppointments: appointments.filter((a) => ['pending', 'approved'].includes(a.status)).length,
+  completedAppointments: appointments.filter((a) => a.status === 'completed').length,
+  totalBookings: appointments.length,
+});
+
+const getProfileValue = (sources, keys) => {
+  for (const source of sources) {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+
+  return '';
+};
+
 export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -30,7 +47,7 @@ export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
       const [{ data: profileData }, { data: appointmentData, error: appointmentError }] = await Promise.all([
         supabase
           .from('users')
-          .select('first_name, last_name')
+          .select('*')
           .eq('id', authUser.id)
           .maybeSingle(),
         supabase
@@ -42,21 +59,21 @@ export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
       if (appointmentError) throw appointmentError;
 
       const userMetadata = authUser.user_metadata || {};
+      const profileSources = [profileData, userMetadata, authUser.raw_user_meta_data];
+      const firstName = getProfileValue(profileSources, ['first_name', 'firstName', 'firstname', 'fname', 'given_name']);
+      const lastName = getProfileValue(profileSources, ['last_name', 'lastName', 'lastname', 'lname', 'family_name']);
+      const fullName = getProfileValue(profileSources, ['full_name', 'fullName', 'display_name', 'displayName', 'name']);
       setUser({
         ...authUser,
         user_metadata: {
           ...userMetadata,
-          firstName: userMetadata.firstName || userMetadata.first_name || profileData?.first_name || '',
-          lastName: userMetadata.lastName || userMetadata.last_name || profileData?.last_name || '',
+          firstName: firstName || fullName.split(' ')[0] || '',
+          lastName,
         },
       });
 
       const appointments = appointmentData || [];
-      setUserStats({
-        upcomingAppointments: appointments.filter((a) => ['pending', 'approved'].includes(a.status)).length,
-        completedAppointments: appointments.filter((a) => a.status === 'completed').length,
-        totalBookings: appointments.length,
-      });
+      setUserStats(getStatsFromAppointments(appointments));
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -67,6 +84,28 @@ export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const channel = supabase
+      .channel(`user-dashboard-stats-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `customer_id=eq.${user.id}`,
+        },
+        fetchUserData
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchUserData]);
 
   if (loading) {
     return (
@@ -99,7 +138,7 @@ export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
         {activeTab === 'overview' && (
           <div className="space-y-8">
             <div className="mb-8">
-              <h2 className="text-4xl font-bold mb-2">Welcome back, {user?.user_metadata?.firstName || 'User'}!</h2>
+              <h2 className="text-4xl font-bold mb-2">Welcome back, {user?.user_metadata?.firstName || 'Customer'}!</h2>
               <p className="text-gray-400">Here's your appointment overview</p>
             </div>
 

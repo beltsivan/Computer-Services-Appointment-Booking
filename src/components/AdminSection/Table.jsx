@@ -141,7 +141,6 @@ export const Table = () => {
                 <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-300 hidden md:table-cell">Service</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-300">Date & Time</th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-300">Status</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs md:text-sm font-semibold text-gray-300">Actions</th>
               </tr>
             </thead>
 
@@ -192,30 +191,6 @@ export const Table = () => {
                           {cfg.label}
                         </span>
                       </td>
-
-                      <td className="px-4 md:px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="text-blue-400 hover:text-blue-300 p-1.5 md:p-2 hover:bg-gray-700 rounded-lg transition"
-                            title="View"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            className="text-orange-400 hover:text-orange-300 p-1.5 md:p-2 hover:bg-gray-700 rounded-lg transition"
-                            title="Edit"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            className="text-red-400 hover:text-red-300 p-1.5 md:p-2 hover:bg-gray-700 rounded-lg transition"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-
                     </tr>
                   );
                 })

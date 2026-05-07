@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Mail, Phone, MapPin, Lock, Save, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Phone, MapPin, Lock, Save, AlertCircle, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
 export const ProfileSettings = ({ user, onUpdate }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: user?.user_metadata?.firstName || user?.user_metadata?.first_name || '',
     lastName: user?.user_metadata?.lastName || user?.user_metadata?.last_name || '',
@@ -17,6 +19,7 @@ export const ProfileSettings = ({ user, onUpdate }) => {
     confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const handleFormChange = (e) => {
@@ -122,15 +125,42 @@ export const ProfileSettings = ({ user, onUpdate }) => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user?.id) {
+      setMessage({ type: 'error', text: 'Unable to delete account because no user is signed in.' });
+      return;
+    }
+
+    const confirmed = window.confirm('Are you sure you want to delete your account? This will remove your profile and appointment data.');
+    if (!confirmed) return;
+
+    const finalConfirmed = window.confirm('This action cannot be undone. Continue deleting your account?');
+    if (!finalConfirmed) return;
+
+    setDeleteLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const { error: deleteError } = await supabase.rpc('delete_current_user');
+      if (deleteError) throw deleteError;
+
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message || 'Failed to delete account. Please try again.' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Message Alert */}
       {message.text && (
-        <div className={`p-4 rounded-lg flex items-center gap-3 ${
-          message.type === 'success'
+        <div className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success'
             ? 'bg-green-900 border border-green-700 text-green-200'
             : 'bg-red-900 border border-red-700 text-red-200'
-        }`}>
+          }`}>
           <AlertCircle size={20} />
           <span>{message.text}</span>
         </div>
@@ -139,7 +169,7 @@ export const ProfileSettings = ({ user, onUpdate }) => {
       {/* Profile Information */}
       <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8">
         <h2 className="text-2xl font-bold mb-6">Profile Information</h2>
-        
+
         <form onSubmit={handleUpdateProfile} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -273,36 +303,20 @@ export const ProfileSettings = ({ user, onUpdate }) => {
         </form>
       </div>
 
-      {/* Preferences */}
-      <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8">
-        <h2 className="text-2xl font-bold mb-6">Preferences</h2>
 
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" defaultChecked className="w-5 h-5 rounded" />
-            <span>Email notifications for appointments</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" defaultChecked className="w-5 h-5 rounded" />
-            <span>SMS reminders</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" className="w-5 h-5 rounded" />
-            <span>Marketing emails</span>
-          </label>
-        </div>
-
-        <button className="mt-6 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-8 rounded-lg transition">
-          Save Preferences
-        </button>
-      </div>
 
       {/* Danger Zone */}
       <div className="bg-red-900 border border-red-700 rounded-2xl p-8">
         <h2 className="text-2xl font-bold mb-6 text-red-200">Danger Zone</h2>
         <p className="text-red-100 mb-4">Permanently delete your account and all associated data</p>
-        <button className="bg-red-700 hover:bg-red-800 text-white font-bold py-3 px-8 rounded-lg transition">
-          Delete Account
+        <button
+          type="button"
+          onClick={handleDeleteAccount}
+          disabled={deleteLoading}
+          className="bg-red-700 hover:bg-red-800 disabled:opacity-60 text-white font-bold py-3 px-8 rounded-lg transition flex items-center gap-2"
+        >
+          {deleteLoading ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+          {deleteLoading ? 'Deleting...' : 'Delete Account'}
         </button>
       </div>
     </div>
