@@ -380,9 +380,9 @@ export const AppointmentsList = ({ fullView = false, statuses = null, emptyTitle
       if (!user) return;
 
       let aptQuery = supabase
-          .from('appointments')
-          .select('id, appointment_date, appointment_time, concern_description, status, total_amount, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes, category )')
-          .eq('customer_id', user.id);
+        .from('appointments')
+        .select('id, appointment_date, appointment_time, concern_description, status, total_amount, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes, category )')
+        .eq('customer_id', user.id);
 
       if (statusFilter) {
         aptQuery = aptQuery.in('status', statusFilter.split(','));
