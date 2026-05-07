@@ -44,28 +44,28 @@ export const UserDashboard = () => {
 
   return (
     <div className="bg-gray-900 text-white min-h-screen w-full overflow-x-hidden">
-      <UserSidebar 
-        sidebarOpen={sidebarOpen} 
+      <UserSidebar
+        sidebarOpen={sidebarOpen}
         sidebarMinimized={sidebarMinimized}
-        activeTab={activeTab} 
+        activeTab={activeTab}
         setActiveTab={handleTabChange}
         onMinimizeToggle={handleMinimizeToggle}
       />
 
       {/* Main Content Area */}
-      <div 
+      <div
         className={`
           transition-all duration-300 min-h-screen w-full
         `}
       >
         {/* Topbar - fixed on mobile, fixed alongside sidebar on desktop */}
-        <UserTopbar 
-          sidebarOpen={sidebarOpen} 
+        <UserTopbar
+          sidebarOpen={sidebarOpen}
           sidebarMinimized={sidebarMinimized}
           setSidebarOpen={setSidebarOpen}
           activeTab={activeTab}
         />
-        
+
         {/* Page Content */}
         <DashboardContent activeTab={activeTab} sidebarOpen={sidebarOpen} sidebarMinimized={sidebarMinimized} />
       </div>
