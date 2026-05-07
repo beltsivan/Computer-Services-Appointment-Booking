@@ -3,7 +3,7 @@ import { Mail, Lock, User } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
-export const Register = ({ onSwitchToLogin }) => {
+export const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -48,6 +48,8 @@ export const Register = ({ onSwitchToLogin }) => {
           data: {
             firstName: formData.firstName,
             lastName: formData.lastName,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
           }
         }
       });
@@ -58,6 +60,20 @@ export const Register = ({ onSwitchToLogin }) => {
       }
 
       if (data.user) {
+        const { error: profileError } = await supabase
+          .from('users')
+          .upsert({
+            id: data.user.id,
+            email: formData.email,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            role: 'customer',
+          }, { onConflict: 'id' });
+
+        if (profileError) {
+          console.error('Error saving customer profile:', profileError);
+        }
+
         alert('Signup successful! Please check your email to confirm your account.');
         setFormData({
           firstName: '',

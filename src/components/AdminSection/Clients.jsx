@@ -32,16 +32,36 @@ export const Clients = () => {
     }
   };
 
+  const normalizeValue = (value) => (typeof value === 'string' ? value.trim() : value || '');
+
+  const getProfileValue = (client, keys) => {
+    const metadataSources = [client, client?.user_metadata, client?.raw_user_meta_data, client?.metadata];
+
+    for (const source of metadataSources) {
+      for (const key of keys) {
+        const value = normalizeValue(source?.[key]);
+        if (value) return value;
+      }
+    }
+
+    return '';
+  };
+
+  const getFirstName = (client) => {
+    const firstName = getProfileValue(client, ['first_name', 'firstName', 'firstname', 'fname', 'given_name']);
+    const fullName = getProfileValue(client, ['full_name', 'fullName', 'display_name', 'displayName', 'name']);
+    return firstName || fullName.split(' ')[0] || 'Name not available';
+  };
+
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
-    const full = `${c.first_name ?? ''} ${c.last_name ?? ''} ${c.email ?? ''}`.toLowerCase();
+    const full = `${getFirstName(c)} ${c.email ?? ''}`.toLowerCase();
     return full.includes(q);
   });
 
-  const getInitials = (first, last) => {
-    const f = first?.charAt(0) ?? '';
-    const l = last?.charAt(0) ?? '';
-    return (f + l).toUpperCase() || '?';
+  const getInitials = (name) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    return `${parts[0]?.charAt(0) ?? ''}${parts[1]?.charAt(0) ?? ''}`.toUpperCase() || '?';
   };
 
   const avatarColors = [
@@ -126,41 +146,43 @@ export const Clients = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((client) => (
-            <div
-              key={client.id}
-              className="group bg-gray-800 border border-gray-700 hover:border-orange-500 rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-orange-900/10"
-            >
-              {/* Avatar + Name */}
-              <div className="flex items-center gap-4 mb-4">
-                <div
-                  className={`w-14 h-14 rounded-full bg-gradient-to-br ${getColor(client.id)} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
-                >
-                  {getInitials(client.first_name, client.last_name)}
+          {filtered.map((client) => {
+            const firstName = getFirstName(client);
+
+            return (
+              <div
+                key={client.id}
+                className="group bg-gray-800 border border-gray-700 hover:border-orange-500 rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:shadow-orange-900/10"
+              >
+                {/* Avatar + Name */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div
+                    className={`w-14 h-14 rounded-full bg-gradient-to-br ${getColor(client.id)} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
+                  >
+                    {getInitials(firstName)}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-white font-bold text-base truncate">
+                      {client.email}
+                    </h3>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 mt-0.5">
+                      <ShieldCheck size={12} />
+                      Customer
+                    </span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-white font-bold text-base truncate">
-                    {client.first_name && client.last_name
-                      ? `${client.first_name} ${client.last_name}`
-                      : client.first_name || client.last_name || 'Unnamed User'}
-                  </h3>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 mt-0.5">
-                    <ShieldCheck size={12} />
-                    Customer
-                  </span>
+
+                {/* Divider */}
+                <div className="border-t border-gray-700 mb-4" />
+
+                {/* Email */}
+                <div className="flex items-center gap-2 text-gray-400 text-sm">
+                  <Mail size={14} className="text-orange-500 flex-shrink-0" />
+                  <span className="truncate">{client.email || 'No email provided'}</span>
                 </div>
               </div>
-
-              {/* Divider */}
-              <div className="border-t border-gray-700 mb-4" />
-
-              {/* Email */}
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                <Mail size={14} className="text-orange-500 flex-shrink-0" />
-                <span className="truncate">{client.email || 'No email provided'}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

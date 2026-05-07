@@ -8,7 +8,7 @@ export const Admin = () => {
   const [sidebarMinimized, setSidebarMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
-// Handle window resize - sidebar behavior based on screen size
+  // Handle window resize - sidebar behavior based on screen size
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
@@ -44,30 +44,30 @@ export const Admin = () => {
 
   return (
     <div className="bg-gray-900 text-white min-h-screen w-full overflow-x-hidden">
-      
+
       {/* Sidebar - fixed to left, overlays on mobile, push on desktop */}
-      <Sidebar 
-        sidebarOpen={sidebarOpen} 
+      <Sidebar
+        sidebarOpen={sidebarOpen}
         sidebarMinimized={sidebarMinimized}
-        activeTab={activeTab} 
+        activeTab={activeTab}
         setActiveTab={handleTabChange}
         onMinimizeToggle={handleMinimizeToggle}
       />
 
-{/* Main Content Area */}
-      <div 
+      {/* Main Content Area */}
+      <div
         className={`
           transition-all duration-300 min-h-screen w-full
         `}
       >
         {/* Topbar - fixed on mobile, fixed alongside sidebar on desktop */}
-        <Topbar 
-          sidebarOpen={sidebarOpen} 
+        <Topbar
+          sidebarOpen={sidebarOpen}
           sidebarMinimized={sidebarMinimized}
           setSidebarOpen={setSidebarOpen}
           activeTab={activeTab}
         />
-        
+
         {/* Page Content */}
         <Main activeTab={activeTab} sidebarOpen={sidebarOpen} sidebarMinimized={sidebarMinimized} />
       </div>

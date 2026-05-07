@@ -5,6 +5,7 @@ import { Table } from "./Table"
 import { Services } from "./Services"
 import { Clients } from "./Clients"
 import { ManageAppointments } from "./ManageAppointments"
+import { AdminCalendar } from "./AdminCalendar"
 import { Calendar, Clock, CheckCircle, AlertCircle, Edit2, Save, X, BarChart3 } from 'lucide-react';
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -15,6 +16,14 @@ const fmtTime = (t) => {
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 };
 const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
+/** Safely get the service object whether Supabase returns an array or object */
+const svc = (apt) => {
+  const s = apt?.services;
+  if (!s) return null;
+  if (Array.isArray(s)) return s[0] || null;
+  return s;
+};
 
 const STATUS_CONFIG = {
   pending:   { label: 'Pending',   icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
@@ -62,7 +71,7 @@ const ApprovedBookingsPanel = () => {
     try {
       const updateData = {
         status: 'approved',
-        total_amount: editForm.total_amount ?? apt.total_amount ?? apt.services?.[0]?.price_estimate ?? 0,
+        total_amount: editForm.total_amount ?? apt.total_amount ?? svc(apt)?.price_estimate ?? 0,
         concern_description: editForm.concern_description ?? apt.concern_description
       };
 
@@ -86,6 +95,9 @@ const ApprovedBookingsPanel = () => {
   };
 
   const handleStatusChange = async (apt, newStatus) => {
+    const statusLabel = newStatus === 'ready' ? 'ready' : newStatus;
+    if (!window.confirm(`Are you sure you want to mark this appointment as ${statusLabel}?`)) return;
+
     setSavingId(apt.id);
     try {
       const { error: updateErr } = await supabase
@@ -107,6 +119,8 @@ const ApprovedBookingsPanel = () => {
 
   // New handler for "Ready to pick up"
   const handleReadyPickup = async (apt) => {
+    if (!window.confirm('Are you sure you want to mark this appointment as ready to pick up?')) return;
+
     setSavingId(apt.id);
     try {
       const { error: updateErr } = await supabase
@@ -129,7 +143,7 @@ const ApprovedBookingsPanel = () => {
   const startEdit = (apt) => {
     setEditingId(apt.id);
     setEditForm({
-      total_amount: apt.total_amount ?? apt.services?.[0]?.price_estimate ?? '',
+      total_amount: apt.total_amount ?? svc(apt)?.price_estimate ?? '',
       concern_description: apt.concern_description || ''
     });
   };
@@ -177,10 +191,10 @@ const ApprovedBookingsPanel = () => {
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className={`space-y-3 ${approvedBookings.length >= 5 ? 'max-h-[500px] overflow-y-auto pr-2' : ''}`}>
         {approvedBookings.map((apt) => {
           const StatusIcon = STATUS_CONFIG[apt.status].icon;
-          const basePrice = apt.services?.[0]?.price_estimate ?? 0;
+          const basePrice = svc(apt)?.price_estimate ?? 0;
           const totalPrice = apt.total_amount ?? basePrice;
           const isModified = apt.total_amount !== null && apt.total_amount !== basePrice;
 
@@ -191,7 +205,7 @@ const ApprovedBookingsPanel = () => {
             >
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-white font-semibold">{apt.services?.[0]?.name || 'Service'}</h4>
+                  <h4 className="text-white font-semibold">{svc(apt)?.name || 'Service'}</h4>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_CONFIG[apt.status].cls}`}>
                     <StatusIcon size={10} />
                     {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
@@ -394,6 +408,8 @@ const PendingBookingsPanel = () => {
   }, []);
 
   const handleReady = async (apt) => {
+    if (!window.confirm('Are you sure you want to mark this appointment as ready to pick up?')) return;
+
     try {
       const { error: updateErr } = await supabase
         .from('appointments')
@@ -437,9 +453,9 @@ const PendingBookingsPanel = () => {
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className={`space-y-3 ${pendingBookings.length >= 5 ? 'max-h-[500px] overflow-y-auto pr-2' : ''}`}>
         {pendingBookings.map((apt) => {
-          const basePrice = apt.services?.[0]?.price_estimate ?? 0;
+          const basePrice = svc(apt)?.price_estimate ?? 0;
           const totalPrice = apt.total_amount ?? basePrice;
           return (
             <div
@@ -447,7 +463,7 @@ const PendingBookingsPanel = () => {
               className="bg-gray-800 border border-gray-700 rounded-xl p-4 hover:border-yellow-500/30 transition-all duration-200"
             >
               <div className="flex flex-wrap items-center justify-between mb-3">
-                <h4 className="text-white font-semibold">{apt.services?.[0]?.name || 'Service'}</h4>
+                <h4 className="text-white font-semibold">{svc(apt)?.name || 'Service'}</h4>
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-600/40">
                   Pending
                 </span>
@@ -479,7 +495,7 @@ const PendingBookingsPanel = () => {
   );
 };
 
-export const Main = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
+export const Main = ({ activeTab, sidebarMinimized }) => {
 return (
     <main
       className={
@@ -515,6 +531,17 @@ return (
             <div className="bg-gray-800 rounded-xl md:rounded-2xl border border-gray-700 p-4 md:p-6 w-full">
               <Services />
             </div>
+          </div>
+        )}
+
+        {/* Calendar */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6 md:space-y-8">
+            <div className="mb-6 md:mb-8">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 text-white">Calendar</h2>
+              <p className="text-gray-400 text-sm md:text-base">View all appointments by date — pending, approved, and completed</p>
+            </div>
+            <AdminCalendar />
           </div>
         )}
 

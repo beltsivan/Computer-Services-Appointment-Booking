@@ -20,8 +20,6 @@ export const Service = () => {
   
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState("move");
-  const [brandPosition, setBrandPosition] = useState(0);
-
   const prevSlide = () => {
     setCurrent((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
     setDirection("prev");

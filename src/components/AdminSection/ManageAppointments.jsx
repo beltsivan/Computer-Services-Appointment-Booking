@@ -6,10 +6,10 @@ import {
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  pending:   { label: 'Pending',   icon: AlertCircle,   cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
-  approved:  { label: 'Approved',  icon: CheckCircle,   cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
-  completed: { label: 'Completed', icon: CheckCircle,   cls: 'bg-blue-500/10 text-blue-400 border-blue-600/40' },
-  cancelled: { label: 'Cancelled', icon: XCircle,       cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
+  pending: { label: 'Pending', icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
+  approved: { label: 'Approved', icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
+  completed: { label: 'Completed', icon: CheckCircle, cls: 'bg-blue-500/10 text-blue-400 border-blue-600/40' },
+  cancelled: { label: 'Cancelled', icon: XCircle, cls: 'bg-red-500/10 text-red-400 border-red-600/40' },
 };
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -18,6 +18,14 @@ const fmtTime = (t) => {
   const [h, m] = t.split(':');
   const hr = parseInt(h);
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+};
+
+/** Safely get the service object whether Supabase returns an array or object */
+const svc = (apt) => {
+  const s = apt?.services;
+  if (!s) return null;
+  if (Array.isArray(s)) return s[0] || null;
+  return s;
 };
 
 export const ManageAppointments = () => {
@@ -41,18 +49,28 @@ export const ManageAppointments = () => {
       // Fetch appointments + services
       const { data: aptData, error: aptErr } = await supabase
         .from('appointments')
-        .select('id, appointment_date, appointment_time, concern_description, status, created_at, customer_id, service_id, services!appointments_service_id_fkey ( name, price_estimate )')
+        .select('id, appointment_date, appointment_time, concern_description, status, created_at, customer_id, service_id, services!appointments_service_id_fkey ( name, price_estimate, category )')
         .order('appointment_date', { ascending: false });
       if (aptErr) throw aptErr;
 
-      // Fetch all public.users (customers) to merge
-      const { data: usersData, error: usrErr } = await supabase
-        .from('users')
-        .select('id, first_name, last_name, email')
-        .eq('role', 'customer');
+      const customerIds = [...new Set((aptData || []).map((a) => a.customer_id).filter(Boolean))];
+      const { data: rpcUsers, error: rpcErr } = customerIds.length > 0
+        ? await supabase.rpc('get_customer_profiles', { customer_ids: customerIds })
+        : { data: [], error: null };
+      const { data: tableUsers, error: usrErr } = customerIds.length > 0
+        ? await supabase
+          .from('users')
+          .select('*')
+          .in('id', customerIds)
+        : { data: [], error: null };
       if (usrErr) throw usrErr;
 
-      const usersMap = Object.fromEntries((usersData || []).map((u) => [u.id, u]));
+      if (rpcErr) console.warn('Customer profile RPC unavailable:', rpcErr.message);
+
+      const usersMap = Object.fromEntries((tableUsers || []).map((u) => [u.id, u]));
+      (rpcUsers || []).forEach((u) => {
+        usersMap[u.id] = { ...(usersMap[u.id] || {}), ...u };
+      });
       const merged = (aptData || []).map((a) => ({ ...a, users: usersMap[a.customer_id] || null }));
       setAppointments(merged);
     } catch (e) {
@@ -64,6 +82,8 @@ export const ManageAppointments = () => {
   };
 
   const handleApprove = async (apt) => {
+    if (!window.confirm('Are you sure you want to approve this appointment?')) return;
+
     setUpdatingId(apt.id);
     try {
       const { error: upErr } = await supabase
@@ -82,6 +102,8 @@ export const ManageAppointments = () => {
   };
 
   const handleCancel = async (id) => {
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
+
     setUpdatingId(id);
     try {
       const { error: upErr } = await supabase
@@ -106,6 +128,8 @@ export const ManageAppointments = () => {
 
   const sendAvailableSchedule = async () => {
     if (!scheduleInput.trim() || !scheduleModal) return;
+    if (!window.confirm('Are you sure you want to send this suggested schedule?')) return;
+
     setScheduleSending(true);
     // In a real app you'd send a notification; here we update concern_description as a simple store
     // and mark status as 'pending' still (admin proposes a new time)
@@ -129,7 +153,7 @@ export const ManageAppointments = () => {
 
   const filtered = appointments.filter((a) => {
     const customer = a.users;
-    const fullName = `${customer?.first_name ?? ''} ${customer?.last_name ?? ''} ${customer?.email ?? ''}`.toLowerCase();
+    const fullName = `${getCustomerName(customer)} ${customer?.email ?? ''}`.toLowerCase();
     const matchSearch = fullName.includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || a.status === filterStatus;
     return matchSearch && matchStatus;
@@ -140,8 +164,36 @@ export const ManageAppointments = () => {
     return acc;
   }, {});
 
-  const getInitials = (first, last) =>
-    ((first?.charAt(0) ?? '') + (last?.charAt(0) ?? '')).toUpperCase() || '?';
+  function normalizeValue(value) {
+    return typeof value === 'string' ? value.trim() : value || '';
+  }
+
+  function getProfileValue(customer, keys) {
+    const sources = [customer, customer?.user_metadata, customer?.raw_user_meta_data, customer?.metadata];
+
+    for (const source of sources) {
+      for (const key of keys) {
+        const value = normalizeValue(source?.[key]);
+        if (value) return value;
+      }
+    }
+
+    return '';
+  }
+
+  function getCustomerName(customer) {
+    const firstName = getProfileValue(customer, ['first_name', 'firstName', 'firstname', 'fname', 'given_name']);
+    const lastName = getProfileValue(customer, ['last_name', 'lastName', 'lastname', 'lname', 'family_name']);
+    const fullName = `${firstName} ${lastName}`.trim();
+    const displayName = getProfileValue(customer, ['full_name', 'fullName', 'display_name', 'displayName', 'name']);
+
+    return fullName || displayName || 'Name not available';
+  }
+
+  const getInitials = (name) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    return `${parts[0]?.charAt(0) ?? ''}${parts[1]?.charAt(0) ?? ''}`.toUpperCase() || '?';
+  };
 
   return (
     <div>
@@ -223,11 +275,12 @@ export const ManageAppointments = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className={`space-y-4 ${filtered.length >= 5 ? 'max-h-[600px] overflow-y-auto pr-2' : ''}`}>
           {filtered.map((apt) => {
             const cfg = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pending;
             const StatusIcon = cfg.icon;
             const customer = apt.users;
+            const customerName = getCustomerName(customer);
             const isUpdating = updatingId === apt.id;
             const hasSuggestedSchedule = apt.concern_description?.startsWith('[Admin suggested schedule]');
 
@@ -240,16 +293,14 @@ export const ManageAppointments = () => {
 
                   {/* Avatar */}
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                    {getInitials(customer?.first_name, customer?.last_name)}
+                    {getInitials(customerName)}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3 mb-3">
                       <h3 className="text-white font-bold text-lg">
-                        {customer?.first_name && customer?.last_name
-                          ? `${customer.first_name} ${customer.last_name}`
-                          : customer?.email || 'Unknown Customer'}
+                        {customerName}
                       </h3>
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
                         <StatusIcon size={12} />
@@ -273,12 +324,17 @@ export const ManageAppointments = () => {
                     </div>
 
                     {/* Service */}
-                    {apt.services?.[0] && (
+                    {svc(apt) && (
                       <div className="inline-flex items-center gap-2 bg-gray-700/60 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-300 mb-3">
-                        <span className="font-medium text-white">{apt.services[0].name}</span>
-                        {apt.services[0]?.price_estimate != null && (
+                        <span className="font-medium text-white">{svc(apt).name}</span>
+                        {svc(apt)?.category && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-600/30">
+                            {svc(apt).category}
+                          </span>
+                        )}
+                        {svc(apt)?.price_estimate != null && (
                           <span className="text-orange-400 font-semibold">
-                            ₱{Number(apt.services[0]?.price_estimate).toLocaleString()}
+                            ₱{Number(svc(apt).price_estimate).toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -353,7 +409,7 @@ export const ManageAppointments = () => {
             <p className="text-gray-400 text-sm mb-6">
               Send an available schedule to{' '}
               <span className="text-orange-400 font-semibold">
-                {scheduleModal.users?.first_name} {scheduleModal.users?.last_name}
+                {getCustomerName(scheduleModal.users)}
               </span>{' '}
               for{' '}
               <span className="text-white font-semibold">{fmtDate(scheduleModal.appointment_date)}</span>.

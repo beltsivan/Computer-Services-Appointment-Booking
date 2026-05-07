@@ -1,9 +1,4 @@
-import { Menu, X, Bell, Search } from 'lucide-react';
-
-export const Topbar = ({ sidebarOpen, sidebarMinimized, setSidebarOpen, activeTab }) => {
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+export const Topbar = ({ sidebarMinimized }) => {
 
 return (
     <header 
