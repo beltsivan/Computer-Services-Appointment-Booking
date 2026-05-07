@@ -46,9 +46,9 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
     }
   };
 
-if (loading) {
+  if (loading) {
     return (
-      <main 
+      <main
         className={`
           transition-all duration-300 bg-gray-900 min-h-screen w-full
           pt-16 lg:pt-16
@@ -64,8 +64,8 @@ if (loading) {
     );
   }
 
-return (
-    <main 
+  return (
+    <main
       className={`
         transition-all duration-300 bg-gray-900 min-h-screen w-full
         pt-16 lg:pt-16
@@ -114,7 +114,7 @@ return (
           </div>
         )}
 
-{/* Appointments Tab */}
+        {/* Appointments Tab */}
         {activeTab === 'appointments' && (
           <div>
             <div className="mb-6">

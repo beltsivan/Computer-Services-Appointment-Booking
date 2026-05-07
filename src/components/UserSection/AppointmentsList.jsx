@@ -17,6 +17,14 @@ const fmtTime = (t) => {
 const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const today = () => new Date().toISOString().split('T')[0];
 
+/** Safely get the service object whether Supabase returns an array or object */
+const svc = (apt) => {
+  const s = apt?.services;
+  if (!s) return null;
+  if (Array.isArray(s)) return s[0] || null;
+  return s;
+};
+
 const STATUS_CONFIG = {
   pending: { label: 'Pending', icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
   approved: { label: 'Approved', icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
@@ -377,7 +385,7 @@ export const AppointmentsList = ({ fullView = false }) => {
       const [aptRes, svcRes] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, appointment_date, appointment_time, concern_description, status, total_amount, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes )')
+          .select('id, appointment_date, appointment_time, concern_description, status, total_amount, created_at, service_id, services!appointments_service_id_fkey ( name, price_estimate, duration_minutes, category )')
           .eq('customer_id', user.id)
           .order('appointment_date', { ascending: false }),
         supabase
@@ -467,8 +475,14 @@ export const AppointmentsList = ({ fullView = false }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3 mb-3">
                       <h3 className="text-white font-bold text-base">
-                        {apt.services?.[0]?.name || 'Service'}
+                        {svc(apt)?.name || 'Service'}
                       </h3>
+                      {svc(apt)?.category && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-600/30">
+                          <Tag size={10} />
+                          {svc(apt).category}
+                        </span>
+                      )}
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
                         <StatusIcon size={12} />
                         {cfg.label}
@@ -484,9 +498,9 @@ export const AppointmentsList = ({ fullView = false }) => {
                         <Clock size={14} className="text-orange-500" />
                         {fmtTime(apt.appointment_time)}
                       </div>
-                      {apt.services?.[0]?.price_estimate != null && (
+                      {svc(apt)?.price_estimate != null && (
                         <div className="text-orange-400 font-bold">
-                          {formatPeso(apt.services[0].price_estimate)}
+                          {formatPeso(svc(apt).price_estimate)}
                         </div>
                       )}
                     </div>

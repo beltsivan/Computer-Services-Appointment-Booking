@@ -20,6 +20,14 @@ const fmtTime = (t) => {
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 };
 
+/** Safely get the service object whether Supabase returns an array or object */
+const svc = (apt) => {
+  const s = apt?.services;
+  if (!s) return null;
+  if (Array.isArray(s)) return s[0] || null;
+  return s;
+};
+
 export const ManageAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +49,7 @@ export const ManageAppointments = () => {
       // Fetch appointments + services
       const { data: aptData, error: aptErr } = await supabase
         .from('appointments')
-        .select('id, appointment_date, appointment_time, concern_description, status, created_at, customer_id, service_id, services!appointments_service_id_fkey ( name, price_estimate )')
+        .select('id, appointment_date, appointment_time, concern_description, status, created_at, customer_id, service_id, services!appointments_service_id_fkey ( name, price_estimate, category )')
         .order('appointment_date', { ascending: false });
       if (aptErr) throw aptErr;
 
@@ -273,12 +281,17 @@ export const ManageAppointments = () => {
                     </div>
 
                     {/* Service */}
-                    {apt.services?.[0] && (
+                    {svc(apt) && (
                       <div className="inline-flex items-center gap-2 bg-gray-700/60 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-300 mb-3">
-                        <span className="font-medium text-white">{apt.services[0].name}</span>
-                        {apt.services[0]?.price_estimate != null && (
+                        <span className="font-medium text-white">{svc(apt).name}</span>
+                        {svc(apt)?.category && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-600/30">
+                            {svc(apt).category}
+                          </span>
+                        )}
+                        {svc(apt)?.price_estimate != null && (
                           <span className="text-orange-400 font-semibold">
-                            ₱{Number(apt.services[0]?.price_estimate).toLocaleString()}
+                            ₱{Number(svc(apt).price_estimate).toLocaleString()}
                           </span>
                         )}
                       </div>

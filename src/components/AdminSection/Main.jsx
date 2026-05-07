@@ -17,6 +17,14 @@ const fmtTime = (t) => {
 };
 const formatPeso = (v) => `₱${Number(v ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
+/** Safely get the service object whether Supabase returns an array or object */
+const svc = (apt) => {
+  const s = apt?.services;
+  if (!s) return null;
+  if (Array.isArray(s)) return s[0] || null;
+  return s;
+};
+
 const STATUS_CONFIG = {
   pending:   { label: 'Pending',   icon: AlertCircle, cls: 'bg-yellow-500/10 text-yellow-400 border-yellow-600/40' },
   approved: { label: 'Approved', icon: CheckCircle, cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/40' },
@@ -63,7 +71,7 @@ const ApprovedBookingsPanel = () => {
     try {
       const updateData = {
         status: 'approved',
-        total_amount: editForm.total_amount ?? apt.total_amount ?? apt.services?.[0]?.price_estimate ?? 0,
+        total_amount: editForm.total_amount ?? apt.total_amount ?? svc(apt)?.price_estimate ?? 0,
         concern_description: editForm.concern_description ?? apt.concern_description
       };
 
@@ -130,7 +138,7 @@ const ApprovedBookingsPanel = () => {
   const startEdit = (apt) => {
     setEditingId(apt.id);
     setEditForm({
-      total_amount: apt.total_amount ?? apt.services?.[0]?.price_estimate ?? '',
+      total_amount: apt.total_amount ?? svc(apt)?.price_estimate ?? '',
       concern_description: apt.concern_description || ''
     });
   };
@@ -181,7 +189,7 @@ const ApprovedBookingsPanel = () => {
       <div className={`space-y-3 ${approvedBookings.length >= 5 ? 'max-h-[500px] overflow-y-auto pr-2' : ''}`}>
         {approvedBookings.map((apt) => {
           const StatusIcon = STATUS_CONFIG[apt.status].icon;
-          const basePrice = apt.services?.[0]?.price_estimate ?? 0;
+          const basePrice = svc(apt)?.price_estimate ?? 0;
           const totalPrice = apt.total_amount ?? basePrice;
           const isModified = apt.total_amount !== null && apt.total_amount !== basePrice;
 
@@ -192,7 +200,7 @@ const ApprovedBookingsPanel = () => {
             >
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-white font-semibold">{apt.services?.[0]?.name || 'Service'}</h4>
+                  <h4 className="text-white font-semibold">{svc(apt)?.name || 'Service'}</h4>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_CONFIG[apt.status].cls}`}>
                     <StatusIcon size={10} />
                     {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
@@ -440,7 +448,7 @@ const PendingBookingsPanel = () => {
 
       <div className={`space-y-3 ${pendingBookings.length >= 5 ? 'max-h-[500px] overflow-y-auto pr-2' : ''}`}>
         {pendingBookings.map((apt) => {
-          const basePrice = apt.services?.[0]?.price_estimate ?? 0;
+          const basePrice = svc(apt)?.price_estimate ?? 0;
           const totalPrice = apt.total_amount ?? basePrice;
           return (
             <div
@@ -448,7 +456,7 @@ const PendingBookingsPanel = () => {
               className="bg-gray-800 border border-gray-700 rounded-xl p-4 hover:border-yellow-500/30 transition-all duration-200"
             >
               <div className="flex flex-wrap items-center justify-between mb-3">
-                <h4 className="text-white font-semibold">{apt.services?.[0]?.name || 'Service'}</h4>
+                <h4 className="text-white font-semibold">{svc(apt)?.name || 'Service'}</h4>
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-600/40">
                   Pending
                 </span>

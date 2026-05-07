@@ -17,6 +17,14 @@ const fmtTime = (t) => {
   return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 };
 
+/** Safely get the service object whether Supabase returns an array or object */
+const svc = (apt) => {
+  const s = apt?.services;
+  if (!s) return null;
+  if (Array.isArray(s)) return s[0] || null;
+  return s;
+};
+
 export const Table = ({ onRefresh }) => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -160,7 +168,7 @@ export const Table = ({ onRefresh }) => {
                               {getCustomerName(apt)}
                             </p>
                             <p className="text-gray-500 text-xs md:hidden truncate">
-                              {apt.services?.[0]?.name}
+                              {svc(apt)?.name}
                             </p>
                           </div>
                         </div>
@@ -168,7 +176,7 @@ export const Table = ({ onRefresh }) => {
 
                       <td className="px-4 md:px-6 py-4 hidden md:table-cell">
                         <span className="text-gray-300">
-                          {apt.services?.[0]?.name || '—'}
+                          {svc(apt)?.name || '—'}
                         </span>
                       </td>
 
