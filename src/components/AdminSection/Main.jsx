@@ -95,6 +95,9 @@ const ApprovedBookingsPanel = () => {
   };
 
   const handleStatusChange = async (apt, newStatus) => {
+    const statusLabel = newStatus === 'ready' ? 'ready' : newStatus;
+    if (!window.confirm(`Are you sure you want to mark this appointment as ${statusLabel}?`)) return;
+
     setSavingId(apt.id);
     try {
       const { error: updateErr } = await supabase
@@ -116,6 +119,8 @@ const ApprovedBookingsPanel = () => {
 
   // New handler for "Ready to pick up"
   const handleReadyPickup = async (apt) => {
+    if (!window.confirm('Are you sure you want to mark this appointment as ready to pick up?')) return;
+
     setSavingId(apt.id);
     try {
       const { error: updateErr } = await supabase
@@ -403,6 +408,8 @@ const PendingBookingsPanel = () => {
   }, []);
 
   const handleReady = async (apt) => {
+    if (!window.confirm('Are you sure you want to mark this appointment as ready to pick up?')) return;
+
     try {
       const { error: updateErr } = await supabase
         .from('appointments')
@@ -488,7 +495,7 @@ const PendingBookingsPanel = () => {
   );
 };
 
-export const Main = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
+export const Main = ({ activeTab, sidebarMinimized }) => {
 return (
     <main
       className={

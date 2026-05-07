@@ -72,6 +72,8 @@ export const ManageAppointments = () => {
   };
 
   const handleApprove = async (apt) => {
+    if (!window.confirm('Are you sure you want to approve this appointment?')) return;
+
     setUpdatingId(apt.id);
     try {
       const { error: upErr } = await supabase
@@ -90,6 +92,8 @@ export const ManageAppointments = () => {
   };
 
   const handleCancel = async (id) => {
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
+
     setUpdatingId(id);
     try {
       const { error: upErr } = await supabase
@@ -114,6 +118,8 @@ export const ManageAppointments = () => {
 
   const sendAvailableSchedule = async () => {
     if (!scheduleInput.trim() || !scheduleModal) return;
+    if (!window.confirm('Are you sure you want to send this suggested schedule?')) return;
+
     setScheduleSending(true);
     // In a real app you'd send a notification; here we update concern_description as a simple store
     // and mark status as 'pending' still (admin proposes a new time)

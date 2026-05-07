@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { ProfileCard } from './ProfileCard';
@@ -8,7 +8,7 @@ import { ProfileSettings } from './ProfileSettings';
 import { UserCalendar } from './UserCalendar';
 import { Calendar, Clock, CheckCircle } from 'lucide-react';
 
-export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) => {
+export const DashboardContent = ({ activeTab, sidebarMinimized }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userStats, setUserStats] = useState({
@@ -18,11 +18,7 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
 
@@ -31,20 +27,46 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
         return;
       }
 
-      setUser(authUser);
+      const [{ data: profileData }, { data: appointmentData, error: appointmentError }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('id', authUser.id)
+          .maybeSingle(),
+        supabase
+          .from('appointments')
+          .select('status')
+          .eq('customer_id', authUser.id),
+      ]);
 
-      // Fetch user stats
+      if (appointmentError) throw appointmentError;
+
+      const userMetadata = authUser.user_metadata || {};
+      setUser({
+        ...authUser,
+        user_metadata: {
+          ...userMetadata,
+          firstName: userMetadata.firstName || userMetadata.first_name || profileData?.first_name || '',
+          lastName: userMetadata.lastName || userMetadata.last_name || profileData?.last_name || '',
+        },
+      });
+
+      const appointments = appointmentData || [];
       setUserStats({
-        upcomingAppointments: 5,
-        completedAppointments: 12,
-        totalBookings: 17,
+        upcomingAppointments: appointments.filter((a) => ['pending', 'approved'].includes(a.status)).length,
+        completedAppointments: appointments.filter((a) => a.status === 'completed').length,
+        totalBookings: appointments.length,
       });
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
   if (loading) {
     return (
@@ -109,7 +131,11 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
             {/* Recent Appointments */}
             <div>
               <h3 className="text-2xl font-bold mb-6">Recent Appointments</h3>
-              <AppointmentsList />
+              <AppointmentsList
+                statuses={['completed']}
+                emptyTitle="No completed appointments yet"
+                emptyDescription="Completed appointments will appear here after service is finished."
+              />
             </div>
           </div>
         )}
@@ -143,7 +169,7 @@ export const DashboardContent = ({ activeTab, sidebarOpen, sidebarMinimized }) =
               <h2 className="text-4xl font-bold mb-2">My Profile</h2>
               <p className="text-gray-400">View your profile information</p>
             </div>
-            <ProfileCard user={user} />
+            <ProfileCard user={user} onUpdate={fetchUserData} />
           </div>
         )}
 

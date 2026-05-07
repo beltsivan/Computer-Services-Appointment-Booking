@@ -25,7 +25,7 @@ const svc = (apt) => {
   return s;
 };
 
-export const Table = ({ onRefresh }) => {
+export const Table = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

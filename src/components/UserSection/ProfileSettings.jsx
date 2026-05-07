@@ -4,12 +4,12 @@ import { supabase } from '../../supabaseClient';
 
 export const ProfileSettings = ({ user, onUpdate }) => {
   const [formData, setFormData] = useState({
-    firstName: user?.user_metadata?.firstName || '',
-    lastName: user?.user_metadata?.lastName || '',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, New York',
-    city: 'New York',
-    zipCode: '10001',
+    firstName: user?.user_metadata?.firstName || user?.user_metadata?.first_name || '',
+    lastName: user?.user_metadata?.lastName || user?.user_metadata?.last_name || '',
+    phone: user?.user_metadata?.phone || '',
+    address: user?.user_metadata?.address || '',
+    city: user?.user_metadata?.city || '',
+    zipCode: user?.user_metadata?.zipCode || user?.user_metadata?.zip_code || '',
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -41,20 +41,43 @@ export const ProfileSettings = ({ user, onUpdate }) => {
     setMessage({ type: '', text: '' });
 
     try {
+      const firstName = formData.firstName.trim();
+      const lastName = formData.lastName.trim();
+
+      if (!firstName || !lastName) {
+        setMessage({ type: 'error', text: 'First name and last name are required' });
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({
         data: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          firstName,
+          lastName,
+          first_name: firstName,
+          last_name: lastName,
+          phone: formData.phone.trim(),
+          address: formData.address.trim(),
+          city: formData.city.trim(),
+          zipCode: formData.zipCode.trim(),
+          zip_code: formData.zipCode.trim(),
         }
       });
 
       if (error) {
         setMessage({ type: 'error', text: error.message });
       } else {
+        const { error: profileError } = await supabase
+          .from('users')
+          .update({ first_name: firstName, last_name: lastName })
+          .eq('id', user.id);
+
+        if (profileError) throw profileError;
+
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
-        onUpdate();
+        onUpdate?.();
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to update profile' });
     } finally {
       setLoading(false);
@@ -92,7 +115,7 @@ export const ProfileSettings = ({ user, onUpdate }) => {
           confirmPassword: '',
         });
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to update password' });
     } finally {
       setLoading(false);
